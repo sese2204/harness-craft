@@ -1,9 +1,19 @@
 {
   "name": "harness-craft",
   "version": "0.1.0",
-  "description": "Collects your Claude Code and Codex harness (MCP, skills, hooks, agents) into a local profile JSON. No network.",
-  "type": "module",
+  "description": "Turn your Claude Code and Codex harness (MCP, skills, hooks, subagents) into a pixel-RPG character sheet HTML. No network.",
+  "keywords": [
+    "claude-code",
+    "codex",
+    "mcp",
+    "agents",
+    "harness",
+    "character-sheet",
+    "cli"
+  ],
+  "author": "sese2204",
   "license": "MIT",
+  "type": "module",
   "bin": {
     "harness-craft": "dist/cli.js"
   },
@@ -16,7 +26,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/build-share-template.mjs",
     "typecheck": "tsc -p tsconfig.test.json && tsc -p share/tsconfig.json",
-    "test": "pnpm run build && node --import tsx --test \"test/**/*.test.ts\""
+    "test": "pnpm run build && node --import tsx --test \"test/**/*.test.ts\"",
+    "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
     "smol-toml": "^1.9.1",

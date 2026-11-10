@@ -1,7 +1,7 @@
 // Bundles share/entry.tsx (React + @harness-craft/sheet + @harness-craft/sheet-ui) into dist/share-template.html:
 // one self-contained HTML file with inline JS, inline CSS and both fonts as data URIs (docs/share-spec.md).
 // Runs after `tsc`, so the shared constants come from the compiled dist/shareFormat.js.
-import { readFile, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
@@ -10,6 +10,7 @@ import { build } from 'esbuild';
 import { SHARE_DATA_ID, SHARE_PLACEHOLDER, SHARE_ROOT_ID, SHARE_TEMPLATE_FILE } from '../dist/shareFormat.js';
 
 const ENTRY = fileURLToPath(new URL('../share/entry.tsx', import.meta.url));
+const LICENSES_DIR = fileURLToPath(new URL('../dist/licenses', import.meta.url));
 const OUT = fileURLToPath(new URL(`../dist/${SHARE_TEMPLATE_FILE}`, import.meta.url));
 /** The whole file, fonts included. Checked here and in test/shareTemplate.test.ts. */
 const MAX_TEMPLATE_BYTES = 400 * 1024;
@@ -74,6 +75,12 @@ function html({ js, css }) {
 <html lang="ko">
 <head>
 <meta charset="utf-8">
+<!--
+  Fonts embedded below, both under the SIL Open Font License 1.1 (https://openfontlicense.org):
+  NeoDunggeunmo — Copyright (c) 2021-2026, Eunbin Jeong (Dalgona.), Reserved Font Name NeoDunggeunmo.
+  Press Start 2P — Copyright 2012 The Press Start 2P Project Authors, Reserved Font Name "Press Start 2P".
+  Full license texts ship in the harness-craft npm package under dist/licenses/.
+-->
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
 <meta name="theme-color" content="${PAGE_BACKGROUND}">
@@ -102,6 +109,11 @@ async function main() {
   const bytes = Buffer.byteLength(out);
   if (bytes > MAX_TEMPLATE_BYTES) throw new Error(`공유 템플릿이 ${bytes}바이트로 한도 ${MAX_TEMPLATE_BYTES}바이트를 넘습니다.`);
   await writeFile(OUT, out, 'utf8');
+  // 템플릿에 넣은 폰트의 OFL 원문을 패키지에 함께 싣는다(OFL 1.1 2항).
+  await mkdir(LICENSES_DIR, { recursive: true });
+  for (const name of ['NEODGM-OFL.txt', 'PRESSSTART2P-OFL.txt']) {
+    await copyFile(require.resolve(`@harness-craft/sheet-ui/fonts/${name}`), `${LICENSES_DIR}/${name}`);
+  }
   process.stderr.write(`공유 템플릿: ${OUT} (${(bytes / 1024).toFixed(1)}KB)\n`);
 }
 
