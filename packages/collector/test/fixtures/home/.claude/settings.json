@@ -1,0 +1,58 @@
+{
+  "model": "opus",
+  "enabledPlugins": {
+    "myplug@market": true,
+    "other@market": false
+  },
+  "env": {
+    "SECRET_TOKEN": "LEAK-SETTINGS-ENV"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Applications/AgentPet.app/Contents/MacOS/agentpet\" hook --"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FOO=LEAK-HOOK-111 node /Users/fakeuser/secret/codex-hook-stop.js --flag"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -z \"$HOME\" ]; then echo LEAK-HOOK-222; fi",
+            "timeout": 5
+          },
+          {
+            "type": "prompt",
+            "prompt": "LEAK-PROMPT-333 /Users/fakeuser/secret"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc \"echo LEAK-HOOK-444\""
+          }
+        ]
+      }
+    ]
+  }
+}

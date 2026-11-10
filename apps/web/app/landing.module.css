@@ -1,0 +1,62 @@
+.wrap {
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding-top: 24px;
+}
+
+.logo {
+  font-family: var(--font-press-start), 'Press Start 2P', monospace;
+  font-size: clamp(28px, 7vw, 56px);
+  line-height: 1;
+  color: #ffc23d;
+  text-shadow: 4px 4px 0 #b05cff, 8px 8px 0 #0b0914;
+  letter-spacing: 2px;
+}
+
+.title { margin: 0; font-size: clamp(24px, 4vw, 36px); font-weight: 400; color: #f3eee2; }
+.lead { margin: 0; font-size: 17px; line-height: 1.5; color: #c9c2e6; max-width: 640px; }
+
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  counter-reset: step;
+}
+
+.step {
+  border: 4px solid #3a3557;
+  background: #1c1830;
+  box-shadow: 0 0 0 4px #0b0914, 6px 6px 0 4px #0b0914;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stepHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.stepNo { font-family: var(--font-press-start), 'Press Start 2P', monospace; font-size: 10px; color: #8f88ad; }
+.stepIcon { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: #0b0914; border: 2px solid #3a3557; }
+.stepTitle { margin: 0; font-size: 19px; font-weight: 400; color: #f3eee2; }
+.stepTitle code { font-family: inherit; color: #6fe36f; }
+.stepBody { margin: 0; font-size: 14px; line-height: 1.5; color: #c9c2e6; }
+
+.cta {
+  align-self: flex-start;
+  font-family: var(--font-press-start), 'Press Start 2P', monospace;
+  font-size: 13px;
+  color: #110e1b !important;
+  background: #ffc23d;
+  padding: 16px 20px;
+  box-shadow: 0 4px 0 #a86f00, 0 0 0 3px #0b0914;
+}
+.cta:hover { background: #ffd36b; }
+.cta:active { transform: translateY(4px); box-shadow: 0 0 0 #a86f00, 0 0 0 3px #0b0914; }
+
+.note { margin: 0; font-size: 13px; color: #8f88ad; }
+.blink { animation: blink 1s steps(1) infinite; }

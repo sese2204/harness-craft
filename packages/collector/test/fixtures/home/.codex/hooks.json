@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -u ~/.codex/hooks/notify.py LEAK-CODEX-HOOK",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

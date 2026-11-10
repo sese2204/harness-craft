@@ -1,0 +1,15 @@
+model = "gpt-test"
+model_reasoning_effort = "high"
+
+[projects."/Users/fakeuser/secret"]
+trust_level = "trusted"
+
+[mcp_servers.acme-mcp]
+command = "/Users/fakeuser/secret/bin/acme"
+args = ["LEAK-CODEX-ARG"]
+
+[mcp_servers.acme-mcp.env]
+TOKEN = "LEAK-CODEX-ENV"
+
+[mcp_servers.web]
+url = "https://mcp.exa.ai/mcp/LEAK-CODEX-URL"

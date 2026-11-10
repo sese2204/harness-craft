@@ -1,0 +1,8 @@
+{"timestamp":"2026-10-08T01:02:03.000Z","type":"session_meta","payload":{"cwd":"/Users/fakeuser/secret"}}
+{"timestamp":"2026-10-08T01:02:03.000Z","type":"event_msg","payload":{"type":"item_completed","thread_id":"x","item":{"type":"McpToolCall","id":"m1","server":"acme-mcp","tool":"jira","arguments":{"q":"LEAK-CODEX-ARGS"}}}}
+{"timestamp":"2026-10-08T01:02:03.000Z","type":"event_msg","payload":{"type":"item_completed","thread_id":"x","item":{"type":"McpToolCall","id":"m1","server":"acme-mcp","tool":"jira"}}}
+{"timestamp":"2026-10-08T01:02:03.000Z","type":"event_msg","payload":{"type":"item_completed","thread_id":"x","item":{"type":"McpToolCall","id":"m2","server":"web","tool":"fetch"}}}
+{"timestamp":"2026-10-08T01:02:03.000Z","type":"event_msg","payload":{"type":"item_completed","thread_id":"x","item":{"type":"SubAgentActivity","id":"s1","kind":"x"}}}
+{"timestamp":"2026-10-08T01:02:03.000Z","type":"event_msg","payload":{"type":"item_completed","thread_id":"x","item":{"type":"CommandExecution","id":"c1","command":["/bin/zsh","-lc","LEAK-CODEX-CMD"]}}}
+{"timestamp":"2026-10-08T01:02:03.000Z","type":"event_msg","payload":{"type":"item_completed","thread_id":"x","item":{"type":"AgentMessage","id":"a1"}}}
+{"type":"event_msg","payload":{"type":"item_completed",

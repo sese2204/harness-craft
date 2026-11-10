@@ -1,0 +1,2 @@
+{"timestamp":"2026-10-09T01:02:03.000Z","type":"event_msg","payload":{"type":"item_completed","thread_id":"x","item":{"type":"McpToolCall","id":"m1","server":"acme-mcp","tool":"jira"}}}
+{"timestamp":"2026-10-09T01:02:03.000Z","type":"event_msg","payload":{"type":"item_completed","thread_id":"x","item":{"type":"CommandExecution","id":"c2","command":["ls"]}}}

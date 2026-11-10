@@ -1,0 +1,4 @@
+{"type":"user","timestamp":"2026-10-05T01:02:03.000Z","message":{"role":"user","content":"<command-name>/alpha</command-name>"}}
+{"type":"user","timestamp":"2026-10-05T01:02:03.000Z","message":{"role":"user","content":"<command-name>/beta</command-name>"}}
+{"type":"assistant","timestamp":"2026-10-05T01:02:03.000Z","message":{"role":"assistant","content":[{"type":"tool_use","id":"t7","name":"Skill","input":{"skill":"myplug:gamma"}},{"type":"tool_use","id":"t8","name":"Agent","input":{"subagent_type":"reviewer","prompt":"LEAK-AGENT-PROMPT"}}]}}
+{"type":"assistant","timestamp":"2026-10-05T01:02:03.000Z","message":{"role":"assistant","content":[{"type":"tool_use","id":"t9","name":"Task","input":{"subagent_type":"myplug:helper"}},{"type":"tool_use","id":"t10","name":"Read","input":{"file_path":"/Users/fakeuser/secret/x"}}]}}

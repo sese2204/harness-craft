@@ -1,0 +1,68 @@
+/* Global base and the design's keyframes (kept global so inline `animation:` values can reference them). */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: #110e1b;
+  color: #f3eee2;
+  font-family: var(--font-neodgm), 'NeoDunggeunmo', var(--font-press-start), monospace;
+  -webkit-font-smoothing: none;
+}
+
+a { color: #ffc23d; text-decoration: none; }
+a:hover { color: #ffe08a; }
+a:focus-visible,
+button:focus-visible,
+input:focus-visible { outline: 3px solid #f3eee2; outline-offset: 3px; }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.page {
+  min-height: 100vh;
+  padding: 28px 32px 48px;
+  background-color: #110e1b;
+  background-image: radial-gradient(#2a2440 1.5px, transparent 1.5px);
+  background-size: 10px 10px;
+  image-rendering: pixelated;
+}
+
+@media (max-width: 767px) {
+  .page { padding: 16px 12px 32px; }
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 0 3px #0b0914, 0 0 10px 2px rgba(255, 194, 61, 0.35); }
+  50% { box-shadow: 0 0 0 3px #0b0914, 0 0 22px 6px rgba(255, 194, 61, 0.7); }
+}
+@keyframes twinkle {
+  0%, 100% { opacity: 0; transform: scale(0.4); }
+  50% { opacity: 1; transform: scale(1); }
+}
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; }
+}

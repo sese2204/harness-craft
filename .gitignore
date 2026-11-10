@@ -1,0 +1,7 @@
+node_modules/
+dist/
+harness-profile.json
+*.tsbuildinfo
+.next/
+next-env.d.ts
+apps/web/AGENTS.md

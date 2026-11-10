@@ -1,0 +1,192 @@
+/* Responsive layout for the character sheet. Visual details stay inline (as in the design);
+   only things that change with width or need :hover/:focus live here.
+   Breakpoints use the sheet's own width so the panel next to it in /preview is accounted for:
+   1216px = 1280px viewport minus the 32px page padding on each side, 704px = 768px minus padding. */
+
+.root {
+  container: sheet / inline-size;
+  width: 100%;
+  min-width: 0;
+}
+
+.frame {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 24px;
+}
+
+.headerGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+  min-width: 0;
+}
+
+.main {
+  display: grid;
+  gap: 24px;
+  align-items: start;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'character' 'side' 'inventory';
+}
+
+.areaCharacter { grid-area: character; min-width: 0; }
+.areaInventory { grid-area: inventory; min-width: 0; }
+.areaSide { grid-area: side; min-width: 0; display: flex; flex-direction: column; gap: 24px; }
+
+.panel {
+  border: 4px solid #3a3557;
+  background: #1c1830;
+  box-shadow: 0 0 0 4px #0b0914, 6px 6px 0 4px #0b0914;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.skillGrid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.partyGrid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.inventoryHead {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 16px;
+  font-size: 12px;
+  color: #8680a2;
+}
+
+/* Axis labels sit outside the radar (nowrap, absolutely positioned). Below the 3-column layout the
+   stats panel can touch the frame edge, so inset the radar to keep labels inside the panel. */
+.radar { width: calc(100% - 48px); margin-inline: auto; }
+
+@container sheet (max-width: 479px) {
+  .panel { padding: 14px; }
+  .skillGrid { gap: 10px; }
+}
+
+@container sheet (min-width: 520px) {
+  .partyGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@container sheet (min-width: 704px) {
+  .main {
+    grid-template-columns: 380px minmax(0, 1fr);
+    grid-template-areas: 'character side' 'inventory inventory';
+  }
+  .skillGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@container sheet (min-width: 1216px) {
+  .main {
+    grid-template-columns: 380px minmax(0, 1fr) 340px;
+    grid-template-areas: 'character inventory side';
+  }
+  .partyGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* Skill card: hover and keyboard focus both lift the card (design style-hover). */
+.skillCard {
+  transform: translateY(0);
+  transition: transform 0.08s steps(2);
+  cursor: help;
+}
+.skillCard:hover,
+.skillCard:focus-visible {
+  transform: translateY(-3px);
+  background: #1a1529 !important;
+}
+.skillCard:focus-visible {
+  outline: 3px solid #f3eee2;
+  outline-offset: 4px;
+}
+
+.shareButton {
+  cursor: pointer;
+  font-family: var(--font-press-start), 'Press Start 2P', monospace;
+  font-size: 11px;
+  color: #110e1b;
+  background: #ffc23d;
+  border: 0;
+  padding: 14px 18px;
+  box-shadow: 0 4px 0 #a86f00, 0 0 0 3px #0b0914;
+  transform: translateY(0);
+}
+.shareButton:hover { background: #ffd36b; }
+.shareButton:active { transform: translateY(4px); box-shadow: 0 0 0 #a86f00, 0 0 0 3px #0b0914; }
+.shareButton:focus-visible { outline: 3px solid #f3eee2; outline-offset: 5px; }
+.shareButton[aria-disabled='true'] {
+  cursor: not-allowed;
+  background: #8a7a52;
+  box-shadow: 0 4px 0 #4f4632, 0 0 0 3px #0b0914;
+}
+.shareButton[aria-disabled='true']:active { transform: none; }
+
+.shareWrap { position: relative; display: inline-flex; }
+.soonTip {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 12px);
+  z-index: 70;
+  white-space: nowrap;
+  font-size: 13px;
+  color: #f3eee2;
+  background: #120f1c;
+  border: 3px solid #f3eee2;
+  box-shadow: 0 0 0 3px #0b0914;
+  padding: 6px 10px;
+  visibility: hidden;
+}
+.shareWrap:hover .soonTip,
+.shareWrap:focus-within .soonTip { visibility: visible; }
+
+.equipLabel {
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.clamp2 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.clamp3 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skillCard { transition: none; }
+}

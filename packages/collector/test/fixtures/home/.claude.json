@@ -1,0 +1,92 @@
+{
+  "numStartups": 42,
+  "firstStartTime": "2026-02-01T00:00:00.000Z",
+  "claudeCodeFirstTokenDate": "2026-01-15T07:23:23.321500Z",
+  "userID": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+  "oauthAccount": {
+    "emailAddress": "fake.user@example.com",
+    "accountUuid": "LEAK-ACCOUNT-777"
+  },
+  "mcpServers": {
+    "leaky-stdio": {
+      "type": "stdio",
+      "command": "/Users/fakeuser/secret/bin/acme-mcp-proxy",
+      "args": [
+        "--token",
+        "__FAKE_SK__"
+      ],
+      "env": {
+        "API_KEY": "LEAK-ENV-123"
+      }
+    },
+    "npx-server": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@scope/pkg@1.2.3",
+        "--key",
+        "LEAK-ARG-456"
+      ],
+      "env": {
+        "GITHUB_TOKEN": "__FAKE_GHP__"
+      }
+    },
+    "remote": {
+      "type": "http",
+      "url": "https://mcp.notion.com/v1?token=LEAK-URL-789",
+      "headers": {
+        "Authorization": "Bearer LEAK-HEADER-000aaaaaaaaaaaa"
+      }
+    },
+    "sse-one": {
+      "type": "sse",
+      "url": "https://bindings.mcp.cloudflare.com/sse/LEAK-URL-PATH"
+    }
+  },
+  "projects": {
+    "/Users/fakeuser/secret/proj": {
+      "mcpServers": {
+        "proj-server": {
+          "type": "http",
+          "url": "https://proj.example.net/mcp"
+        },
+        "remote": {
+          "type": "http",
+          "url": "https://other.example.com"
+        }
+      }
+    },
+    "/Users/fakeuser/other": {
+      "mcpServers": {
+        "proj-server": {
+          "type": "http",
+          "url": "https://proj.example.net/mcp"
+        }
+      }
+    }
+  },
+  "skillUsage": {
+    "alpha": {
+      "usageCount": 2,
+      "lastUsedAt": 1790000000000
+    },
+    "beta": {
+      "usageCount": 10,
+      "lastUsedAt": 1790000100000
+    },
+    "myplug:gamma": {
+      "usageCount": 1,
+      "lastUsedAt": 1790000200000
+    },
+    "gamma": {
+      "usageCount": 2,
+      "lastUsedAt": 1790000300000
+    }
+  },
+  "pluginUsage": {
+    "myplug@market": {
+      "usageCount": 7,
+      "lastUsedAt": 1790000000000
+    }
+  }
+}

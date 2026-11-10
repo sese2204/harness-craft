@@ -1,0 +1,338 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-03T09:00:00.000Z",
+  "collector": {
+    "name": "harness-craft",
+    "version": "0.1.0"
+  },
+  "claudeCode": {
+    "model": "opus",
+    "since": "2026-03-14",
+    "startups": 812,
+    "mcpServers": [
+      {
+        "name": "github",
+        "transport": "stdio",
+        "scope": "user",
+        "package": "@modelcontextprotocol/server-github",
+        "calls": 1820
+      },
+      {
+        "name": "playwright",
+        "transport": "stdio",
+        "scope": "user",
+        "package": "@playwright/mcp",
+        "calls": 910
+      },
+      {
+        "name": "postgres",
+        "transport": "stdio",
+        "scope": "user",
+        "package": "@modelcontextprotocol/server-postgres",
+        "calls": 640
+      },
+      {
+        "name": "notion",
+        "transport": "http",
+        "scope": "user",
+        "host": "mcp.notion.com",
+        "calls": 380
+      },
+      {
+        "name": "filesystem",
+        "transport": "stdio",
+        "scope": "user",
+        "package": "@modelcontextprotocol/server-filesystem",
+        "calls": 260
+      },
+      {
+        "name": "slack",
+        "transport": "stdio",
+        "scope": "user",
+        "package": "slack-mcp",
+        "calls": 120
+      },
+      {
+        "name": "sentry",
+        "transport": "http",
+        "scope": "user",
+        "host": "mcp.sentry.dev",
+        "calls": 0
+      }
+    ],
+    "skills": [
+      {
+        "name": "commit-wizard",
+        "description": "diff를 읽고 완벽한 커밋 메시지를 짓는다. 스코프 자동 추론, 브레이킹 체인지 감지.",
+        "source": "user",
+        "uses": 1284,
+        "lastUsedAt": "2026-09-02"
+      },
+      {
+        "name": "lint-fixer",
+        "description": "린트 경고를 조용히 정리하고 변경 요약만 남긴다",
+        "source": "user",
+        "uses": 880,
+        "lastUsedAt": "2026-09-02"
+      },
+      {
+        "name": "test-forge",
+        "description": "함수 하나로 경계값·예외·회귀 테스트 케이스를 벼려낸다",
+        "source": "user",
+        "uses": 517,
+        "lastUsedAt": "2026-09-02"
+      },
+      {
+        "name": "pr-reviewer",
+        "description": "PR을 읽고 버그 가능성·스타일·테스트 누락을 짚는다",
+        "source": "user",
+        "uses": 342,
+        "lastUsedAt": "2026-09-02"
+      },
+      {
+        "name": "refactor-blade",
+        "description": "중복 코드를 베어내고 구조를 정리한다",
+        "source": "plugin:forge-kit",
+        "uses": 210,
+        "lastUsedAt": "2026-09-02"
+      },
+      {
+        "name": "issue-triage",
+        "description": "새 이슈에 라벨과 우선순위를 붙인다",
+        "source": "user",
+        "uses": 143,
+        "lastUsedAt": "2026-09-02"
+      },
+      {
+        "name": "doc-scribe",
+        "description": "코드에서 README와 API 문서를 뽑아낸다",
+        "source": "plugin:scribe",
+        "uses": 96,
+        "lastUsedAt": "2026-09-02"
+      },
+      {
+        "name": "deploy-runner",
+        "description": "스테이징 배포와 헬스체크를 한 번에",
+        "source": "user",
+        "uses": 64,
+        "lastUsedAt": "2026-09-02"
+      },
+      {
+        "name": "changelog",
+        "description": "커밋 로그로 릴리즈 노트를 쓴다",
+        "source": "user",
+        "uses": 31,
+        "lastUsedAt": "2026-09-02"
+      },
+      {
+        "name": "api-mocker",
+        "description": "OpenAPI 명세로 목 서버를 띄운다",
+        "source": "user",
+        "uses": 12,
+        "lastUsedAt": "2026-09-02"
+      },
+      {
+        "name": "i18n-sweeper",
+        "description": "번역 누락 키를 찾아 채운다",
+        "source": "user",
+        "uses": 4,
+        "lastUsedAt": "2026-09-02"
+      },
+      {
+        "name": "perf-probe",
+        "description": "느린 쿼리와 렌더링을 찾아낸다",
+        "source": "user",
+        "uses": 0,
+        "lastUsedAt": null
+      }
+    ],
+    "agents": [
+      {
+        "name": "opus-researcher",
+        "description": "코드베이스·문서 탐색 전문",
+        "model": "opus",
+        "effort": null,
+        "toolCount": null,
+        "mcpServers": [],
+        "source": "user",
+        "uses": 420
+      },
+      {
+        "name": "sonnet-tester",
+        "description": "실패 케이스를 끝까지 추적",
+        "model": "sonnet",
+        "effort": null,
+        "toolCount": null,
+        "mcpServers": [],
+        "source": "user",
+        "uses": 310
+      },
+      {
+        "name": "refactorer",
+        "description": "구조 정리와 성능 개선 담당",
+        "model": null,
+        "effort": null,
+        "toolCount": null,
+        "mcpServers": [],
+        "source": "user",
+        "uses": 180
+      },
+      {
+        "name": "writer",
+        "description": "README·릴리즈 노트 작성",
+        "model": "fable",
+        "effort": null,
+        "toolCount": null,
+        "mcpServers": [],
+        "source": "user",
+        "uses": 95
+      },
+      {
+        "name": "haiku-scout",
+        "description": "빠른 파일 정찰",
+        "model": "haiku",
+        "effort": null,
+        "toolCount": null,
+        "mcpServers": [],
+        "source": "user",
+        "uses": 12
+      }
+    ],
+    "hooks": [
+      {
+        "event": "PreToolUse",
+        "matcher": "Bash",
+        "type": "command",
+        "label": "guard-rm.sh"
+      },
+      {
+        "event": "PreToolUse",
+        "matcher": "Bash",
+        "type": "command",
+        "label": "inline"
+      },
+      {
+        "event": "PostToolUse",
+        "matcher": "Edit|Write",
+        "type": "command",
+        "label": "prettier"
+      },
+      {
+        "event": "Stop",
+        "matcher": null,
+        "type": "command",
+        "label": "session-summary.js"
+      },
+      {
+        "event": "Notification",
+        "matcher": null,
+        "type": "command",
+        "label": "slack-ping.sh"
+      },
+      {
+        "event": "SessionStart",
+        "matcher": null,
+        "type": "command",
+        "label": "inline"
+      }
+    ],
+    "plugins": [
+      {
+        "name": "forge-kit",
+        "marketplace": "community",
+        "version": "1.2.0",
+        "enabled": true,
+        "uses": 210
+      },
+      {
+        "name": "scribe",
+        "marketplace": "community",
+        "version": "0.4.1",
+        "enabled": true,
+        "uses": 96
+      }
+    ],
+    "commands": [
+      {
+        "name": "ship",
+        "description": "빌드·테스트·배포"
+      }
+    ],
+    "instructions": {
+      "present": true,
+      "lines": 240,
+      "bytes": 9800
+    },
+    "usage": {
+      "sessions": 612,
+      "subagentRuns": 540,
+      "projects": 23,
+      "toolCalls": 38200,
+      "builtinTools": {
+        "Bash": 14200,
+        "Read": 9100,
+        "Edit": 5200,
+        "Write": 1400,
+        "Grep": 2600,
+        "Glob": 900,
+        "WebFetch": 120
+      },
+      "firstActivity": "2026-03-14",
+      "lastActivity": "2026-09-03",
+      "activeDays": 118
+    }
+  },
+  "codex": {
+    "model": "gpt-5-codex",
+    "reasoningEffort": "medium",
+    "mcpServers": [
+      {
+        "name": "github",
+        "transport": "stdio",
+        "scope": "user",
+        "package": "@modelcontextprotocol/server-github",
+        "calls": 140
+      }
+    ],
+    "skills": [
+      {
+        "name": "commit-wizard",
+        "description": "diff를 읽고 완벽한 커밋 메시지를 짓는다. 스코프 자동 추론, 브레이킹 체인지 감지.",
+        "source": "user",
+        "uses": 60,
+        "lastUsedAt": "2026-09-02"
+      }
+    ],
+    "hooks": [
+      {
+        "event": "Stop",
+        "matcher": null,
+        "type": "command",
+        "label": "codex-hook-stop.js"
+      }
+    ],
+    "commands": [],
+    "instructions": {
+      "present": true,
+      "lines": 60,
+      "bytes": 2100
+    },
+    "rulesFiles": 2,
+    "usage": {
+      "sessions": 88,
+      "mcpCalls": 140,
+      "subagentActivities": 75,
+      "commandExecutions": 4300,
+      "firstActivity": "2026-06-01",
+      "lastActivity": "2026-09-02",
+      "activeDays": 41
+    }
+  },
+  "redactions": {
+    "paths": 0,
+    "emails": 0,
+    "secrets": 0,
+    "urls": 0
+  },
+  "warnings": []
+}
