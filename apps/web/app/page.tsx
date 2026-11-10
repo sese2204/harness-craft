@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import type { IconName } from '@harness-craft/sheet';
 
-import { PixelIcon } from '@/components/sheet/pixel';
+import { PixelIcon } from '@harness-craft/sheet-ui/pixel';
 
 import styles from './landing.module.css';
 

@@ -1,5 +1,5 @@
 // Merges Claude Code and Codex into one character and removes hidden items (docs/sheet-mapping.md 「합치기」).
-import type { HarnessProfile, McpServer, Skill, Source } from 'harness-craft/src/types.js';
+import type { HarnessProfile, McpServer, Skill, Source } from '@harness-craft/schema';
 
 import { compareNames } from './rank.js';
 import type { HiddenKind, Origin, Visibility } from './types.js';

@@ -1,5 +1,5 @@
 // Character sheet model produced by toSheet() (docs/sheet-mapping.md v1).
-import type { HarnessProfile } from 'harness-craft/src/types.js';
+import type { HarnessProfile } from '@harness-craft/schema';
 
 export type { HarnessProfile };
 

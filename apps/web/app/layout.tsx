@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 
+import '@harness-craft/sheet-ui/base.css';
+
 import { neodgm, pressStart } from './fonts';
 import './globals.css';
 

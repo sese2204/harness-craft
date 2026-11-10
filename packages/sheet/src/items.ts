@@ -1,5 +1,5 @@
 // Equipment slots (MCP) and skill inventory (docs/sheet-mapping.md 「칸별 규칙」).
-import type { Source } from 'harness-craft/src/types.js';
+import type { Source } from '@harness-craft/schema';
 
 import { pickByHash } from './hash.js';
 import type { MergedMcp, MergedSkill } from './merge.js';

@@ -1,5 +1,5 @@
 // Boundary check for an untrusted harness-profile.json before it reaches toSheet().
-import type { HarnessProfile } from 'harness-craft/src/types.js';
+import type { HarnessProfile } from '@harness-craft/schema';
 
 export type ParseResult = { ok: true; profile: HarnessProfile } | { ok: false; errors: string[] };
 

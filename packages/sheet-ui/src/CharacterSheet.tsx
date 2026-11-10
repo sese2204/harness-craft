@@ -20,8 +20,11 @@ export interface ShareAction {
 export interface CharacterSheetProps {
   model: SheetModel;
   scanlines?: boolean;
-  /** Omit until sharing exists: the button renders disabled with a "곧 지원" hint. */
-  share?: ShareAction;
+  /**
+   * Omit until sharing exists: the button renders disabled with a "곧 지원" hint.
+   * `null` draws no button at all (the shared HTML file, where there is nothing to share from).
+   */
+  share?: ShareAction | null;
 }
 
 const SOURCE_NAMES: Readonly<Record<Origin, string>> = { claude: 'Claude Code', codex: 'Codex' };
@@ -65,7 +68,7 @@ function Scanlines() {
   );
 }
 
-/** Pure display of a SheetModel. Shared by /preview and the future public /@handle page. */
+/** Pure display of a SheetModel. Shared by /preview, the shared HTML file and the future public /@handle page. */
 export function CharacterSheet({ model, scanlines = false, share }: CharacterSheetProps) {
   return (
     <div className={styles.root}>
@@ -86,7 +89,7 @@ export function CharacterSheet({ model, scanlines = false, share }: CharacterShe
           </div>
           <div className={styles.headerGroup}>
             {model.updatedAt && <div style={{ fontSize: 14, color: COLOR.muted }}>마지막 갱신 {model.updatedAt}</div>}
-            <ShareButton share={share} />
+            {share !== null && <ShareButton share={share} />}
           </div>
         </header>
 
@@ -103,11 +106,20 @@ export function CharacterSheet({ model, scanlines = false, share }: CharacterShe
 
         <footer className={styles.footer}>
           <span style={{ overflowWrap: 'anywhere' }}>
-            dev.quest/@{model.handle}
+            {share === null ? `@${model.handle} · npx harness-craft share` : `dev.quest/@${model.handle}`}
             {model.updatedAt && ` · 마지막 갱신 ${model.updatedAt}`}
           </span>
           <span aria-hidden="true" style={{ fontFamily: FONT_PIXEL, fontSize: 9 }}>
-            PRESS <span style={{ color: COLOR.gold }}>SHARE</span> TO CONTINUE<span style={{ animation: 'blink 1s steps(1) infinite' }}>_</span>
+            {share === null ? (
+              <>
+                GAME <span style={{ color: COLOR.gold }}>SAVED</span>
+              </>
+            ) : (
+              <>
+                PRESS <span style={{ color: COLOR.gold }}>SHARE</span> TO CONTINUE
+              </>
+            )}
+            <span style={{ animation: 'blink 1s steps(1) infinite' }}>_</span>
           </span>
         </footer>
       </div>

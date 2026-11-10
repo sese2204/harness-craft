@@ -27,6 +27,8 @@ harness-craft [scan] [--out <file>] [--json] [--no-usage] [--home <dir>]
 
 요약 마지막 줄에 "아무것도 업로드하지 않았습니다" 를 반드시 쓴다.
 
+혼자 열리는 시트 HTML 을 만드는 `share` 명령도 있다. [share-spec.md](./share-spec.md) 참고.
+
 ## 출력 스키마 (`schemaVersion: 1`)
 
 ```ts

@@ -8,9 +8,9 @@ export const pressStart = Press_Start_2P({
   variable: '--font-press-start',
 });
 
-// NeoDunggeunmo v1.601, SIL OFL 1.1 — see public/fonts/NEODGM-OFL.txt
+// NeoDunggeunmo v1.601, SIL OFL 1.1 — the file and its license live in packages/sheet-ui/fonts (NEODGM-OFL.txt).
 export const neodgm = localFont({
-  src: '../public/fonts/neodgm.woff2',
+  src: '../node_modules/@harness-craft/sheet-ui/fonts/neodgm.woff2',
   display: 'swap',
   variable: '--font-neodgm',
 });

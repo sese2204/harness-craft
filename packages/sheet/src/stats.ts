@@ -1,5 +1,5 @@
 // Six stat axes, title and level (docs/sheet-mapping.md 「스탯 6축」「레벨」).
-import type { HarnessProfile } from 'harness-craft/src/types.js';
+import type { HarnessProfile } from '@harness-craft/schema';
 
 import type { MergedHarness } from './merge.js';
 import type { LevelInfo, Stat, StatKey } from './types.js';

@@ -5,9 +5,24 @@ import { fileURLToPath } from 'node:url';
 
 import { collectProfile } from '../src/collect.js';
 import type { HarnessProfile } from '../src/types.js';
-import { FIXTURE_PLACEHOLDERS } from './fakeTokens.js';
+import { FAKE_GHP, FAKE_SK, FIXTURE_PLACEHOLDERS } from './fakeTokens.js';
 
 export const FIXTURE_HOME = fileURLToPath(new URL('./fixtures/home/', import.meta.url));
+/** Strings planted in the fixture home that must never reach any output (profile JSON, shared HTML). */
+export const LEAK_MARKERS: readonly string[] = [
+  'LEAK-',
+  'sk-test',
+  'ghp_',
+  '/Users/fakeuser',
+  'fakeuser',
+  'fake.user@example.com',
+  'Bearer',
+  'harness-craft-test-',
+  'deadbeefdeadbeef',
+  '__FAKE_',
+  FAKE_GHP,
+  FAKE_SK,
+];
 export const FIXED_NOW = () => new Date('2026-11-09T00:00:00.000Z');
 
 /** Replaces `__FAKE_*__` placeholders in every copied fixture file with runtime-assembled tokens. */

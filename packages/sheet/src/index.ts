@@ -1,5 +1,5 @@
 // toSheet(): harness-profile.json + visibility → character sheet model (docs/sheet-mapping.md v1).
-import type { HarnessProfile } from 'harness-craft/src/types.js';
+import type { HarnessProfile } from '@harness-craft/schema';
 
 import { buildEquipment, buildInventory, EQUIP_SLOTS } from './items.js';
 import { applyVisibility, mergeProfile } from './merge.js';

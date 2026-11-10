@@ -4,7 +4,7 @@ import { useMemo, useState, type DragEvent } from 'react';
 import { parseProfile, toSheet, type HarnessProfile, type Visibility } from '@harness-craft/sheet';
 
 import sampleJson from '@/data/sample-profile.json';
-import { CharacterSheet } from '@/components/sheet/CharacterSheet';
+import { CharacterSheet } from '@harness-craft/sheet-ui';
 
 import { FileOpener } from './FileOpener';
 import styles from './preview.module.css';

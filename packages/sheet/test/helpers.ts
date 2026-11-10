@@ -1,4 +1,4 @@
-import type { Agent, ClaudeCodeSource, CodexSource, HarnessProfile, Hook, McpServer, Skill } from 'harness-craft/src/types.js';
+import type { Agent, ClaudeCodeSource, CodexSource, HarnessProfile, Hook, McpServer, Skill } from '@harness-craft/schema';
 
 import { DEFAULT_VISIBILITY, type Visibility } from '../src/index.js';
 

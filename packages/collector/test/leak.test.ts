@@ -4,22 +4,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 
 import { FAKE_GHP, FAKE_SK } from './fakeTokens.js';
-import { makeHome, scanFixture } from './helpers.js';
-
-const MARKERS = [
-  'LEAK-',
-  'sk-test',
-  'ghp_',
-  '/Users/fakeuser',
-  'fakeuser',
-  'fake.user@example.com',
-  'Bearer',
-  'harness-craft-test-',
-  'deadbeefdeadbeef',
-  '__FAKE_',
-  FAKE_GHP,
-  FAKE_SK,
-];
+import { LEAK_MARKERS as MARKERS, makeHome, scanFixture } from './helpers.js';
 
 test('no planted marker survives in the profile JSON', async () => {
   const { profile, home } = await scanFixture();

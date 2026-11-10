@@ -1,5 +1,5 @@
 // Items the owner can hide, for the visibility panel. Uses the same merge as toSheet() so keys always match.
-import type { HarnessProfile } from 'harness-craft/src/types.js';
+import type { HarnessProfile } from '@harness-craft/schema';
 
 import { mergeProfile } from './merge.js';
 import { compareNames } from './rank.js';
