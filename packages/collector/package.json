@@ -13,6 +13,15 @@
   ],
   "author": "sese2204",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sese2204/harness-craft.git",
+    "directory": "packages/collector"
+  },
+  "homepage": "https://github.com/sese2204/harness-craft#readme",
+  "bugs": {
+    "url": "https://github.com/sese2204/harness-craft/issues"
+  },
   "type": "module",
   "bin": {
     "harness-craft": "dist/cli.js"
