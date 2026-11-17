@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { escapeJsonForHtml, fillShareTemplate } from '../src/shareHtml.js';
-import { SHARE_PLACEHOLDER } from '../src/shareFormat.js';
+import { SHARE_PLACEHOLDER, validateShareName } from '../src/shareFormat.js';
 import { globMatcher, prepareShareProfile } from '../src/shareProfile.js';
 import type { HarnessProfile } from '../src/types.js';
 import { scanFixture } from './helpers.js';
@@ -14,7 +14,7 @@ function allNames(profile: HarnessProfile): string[] {
   const x = profile.codex;
   return [
     ...(c ? [...c.mcpServers, ...c.skills, ...c.agents, ...c.plugins, ...c.commands].map((i) => i.name) : []),
-    ...(x ? [...x.mcpServers, ...x.skills, ...x.commands].map((i) => i.name) : []),
+    ...(x ? [...x.mcpServers, ...x.skills, ...(x.agents ?? []), ...x.commands].map((i) => i.name) : []),
   ];
 }
 
@@ -52,15 +52,33 @@ test('hidden names appear nowhere in the shared JSON', async () => {
   for (const name of ['npx-server', 'broken', 'myplug', 'reviewer', 'team:review']) assert.ok(full.includes(name), name);
 });
 
+test('Codex agents are hidden and counted like Claude agents; activity is carried through unchanged', async () => {
+  const { profile } = await scanFixture();
+  const { profile: out, hidden } = prepareShareProfile(profile, { hide: ['planner', 'DEFAULT'], descriptions: true });
+  assert.deepEqual(out.codex?.agents?.map((a) => a.name), ['lostfile', 'no-name-field', 'outsider', 'reviewer']);
+  assert.equal(out.codex?.agents?.find((a) => a.name === 'reviewer')?.description, 'Reviews diffs');
+  assert.equal(hidden, 2);
+  assert.deepEqual(out.activity, profile.activity);
+  assert.notEqual(out.activity, profile.activity);
+  // A profile written before Codex agents and activity existed stays without them.
+  const { activity: _a, ...old } = profile;
+  const oldCodex = { ...profile.codex! };
+  delete oldCodex.agents;
+  const prepared = prepareShareProfile({ ...old, codex: oldCodex }, NO_HIDE).profile;
+  assert.equal('activity' in prepared, false);
+  assert.equal(prepared.codex && 'agents' in prepared.codex, false);
+});
+
 test('hooks are hidden when the label or the event matches', async () => {
   const { profile } = await scanFixture({ usage: false });
   const byLabel = prepareShareProfile(profile, { hide: ['AGENT*', 'notify.py'], descriptions: true });
   assert.deepEqual(byLabel.profile.claudeCode?.hooks.map((h) => h.label), ['codex-hook-stop.js', 'inline', 'inline', 'prompt']);
-  assert.deepEqual(byLabel.profile.codex?.hooks, []);
-  assert.equal(byLabel.hidden, 2);
+  assert.deepEqual(byLabel.profile.codex?.hooks.map((h) => h.label), ['kit-hook.js', 'inline-guard.sh']);
+  // agentpet, notify.py, and the Codex skill agentskill (AGENT* matches every kind of item).
+  assert.equal(byLabel.hidden, 3);
   const byEvent = prepareShareProfile(profile, { hide: ['stop'], descriptions: true });
   assert.deepEqual(byEvent.profile.claudeCode?.hooks.map((h) => h.event), ['PreToolUse', 'PreToolUse', 'SessionStart']);
-  assert.deepEqual(byEvent.profile.codex?.hooks, []);
+  assert.deepEqual(byEvent.profile.codex?.hooks.map((h) => h.event), ['PostToolUse', 'PostToolUse']);
 });
 
 test('descriptions are blanked unless asked for, together with MCP package/host/command', async () => {
@@ -69,7 +87,10 @@ test('descriptions are blanked unless asked for, together with MCP package/host/
   const c = hidden.claudeCode;
   const x = hidden.codex;
   assert.ok(c && x);
-  for (const item of [...c.skills, ...c.agents, ...c.commands, ...x.skills, ...x.commands]) assert.equal(item.description, '', item.name);
+  assert.ok((x.agents ?? []).length > 0);
+  for (const item of [...c.skills, ...c.agents, ...c.commands, ...x.skills, ...(x.agents ?? []), ...x.commands]) {
+    assert.equal(item.description, '', item.name);
+  }
   for (const s of [...c.mcpServers, ...x.mcpServers]) {
     assert.equal(s.package ?? s.host ?? s.command, undefined, s.name);
   }
@@ -86,6 +107,16 @@ test('prepareShareProfile drops warnings and does not mutate its input', async (
   assert.deepEqual(out.warnings, []);
   assert.deepEqual(allNames(out), []);
   assert.equal(JSON.stringify(profile), before);
+});
+
+test('validateShareName: any text up to 32 code points, trimmed, leading @ dropped, no control characters', () => {
+  assert.deepEqual(validateShareName('  @@세현  '), { ok: true, name: '세현' });
+  assert.deepEqual(validateShareName('<script>alert(1)</script>'), { ok: true, name: '<script>alert(1)</script>' });
+  assert.deepEqual(validateShareName(' '), { ok: true, name: 'player' });
+  assert.deepEqual(validateShareName('@'), { ok: true, name: 'player' });
+  assert.deepEqual(validateShareName('🧙'.repeat(32)), { ok: true, name: '🧙'.repeat(32) });
+  assert.equal(validateShareName('🧙'.repeat(33)).ok, false);
+  for (const bad of ['a\u0000b', 'a\nb', 'a\u001fb', 'a\u007fb']) assert.equal(validateShareName(bad).ok, false, JSON.stringify(bad));
 });
 
 test('escapeJsonForHtml escapes <, >, & and the JS line separators, and stays valid JSON', () => {

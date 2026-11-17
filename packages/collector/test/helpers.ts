@@ -25,17 +25,20 @@ export const LEAK_MARKERS: readonly string[] = [
 ];
 export const FIXED_NOW = () => new Date('2026-11-09T00:00:00.000Z');
 
-/** Replaces `__FAKE_*__` placeholders in every copied fixture file with runtime-assembled tokens. */
-async function fillPlaceholders(dir: string): Promise<void> {
+/** Stands for the temp home's absolute path in fixtures (session logs and hooks.state keys hold absolute paths). */
+export const HOME_PLACEHOLDER = '__HOME__';
+
+/** Replaces `__FAKE_*__` placeholders with runtime-assembled tokens and `__HOME__` with the temp home. */
+async function fillPlaceholders(dir: string, home: string): Promise<void> {
   for (const entry of await readdir(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) {
-      await fillPlaceholders(path);
+      await fillPlaceholders(path, home);
       continue;
     }
     if (!entry.isFile()) continue;
     const text = await readFile(path, 'utf8');
-    const filled = Object.entries(FIXTURE_PLACEHOLDERS).reduce((t, [k, v]) => t.replaceAll(k, v), text);
+    const filled = Object.entries({ ...FIXTURE_PLACEHOLDERS, [HOME_PLACEHOLDER]: home }).reduce((t, [k, v]) => t.replaceAll(k, v), text);
     if (filled !== text) await writeFile(path, filled);
   }
 }
@@ -47,7 +50,7 @@ async function fillPlaceholders(dir: string): Promise<void> {
 export async function makeHome(options: { codex?: boolean } = {}): Promise<{ home: string; cleanup: () => Promise<void> }> {
   const home = await mkdtemp(join(tmpdir(), 'harness-craft-test-'));
   await cp(FIXTURE_HOME, home, { recursive: true });
-  await fillPlaceholders(home);
+  await fillPlaceholders(home, home);
   if (options.codex === false) await rm(join(home, '.codex'), { recursive: true, force: true });
   await symlink(join('..', 'harness', 'skills'), join(home, '.claude', 'skills'));
   const installPath = join(home, '.claude', 'plugins', 'cache', 'market', 'myplug', '1.0.0');

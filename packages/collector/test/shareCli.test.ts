@@ -24,17 +24,17 @@ function shareData(html: string): ShareData {
   return JSON.parse(html.slice(start, html.indexOf('</script>', start))) as ShareData;
 }
 
-test('share writes one HTML file with the handle and the data in place of the placeholder', async () => {
+test('share writes one HTML file with the name and the data in place of the placeholder', async () => {
   const { home, cleanup } = await makeHome();
   try {
-    const r = run(['share', '--home', home, '--handle', 'sese2204', '--hide', 'REMOTE', '--hide', 'beta'], home);
+    const r = run(['share', '--home', home, '--name', '@sese2204', '--hide', 'REMOTE', '--hide', 'beta'], home);
     assert.equal(r.status, 0, r.stderr);
     assert.equal(r.stdout, '');
     const out = join(home, 'harness-sheet.html');
     const html = await readFile(out, 'utf8');
     assert.equal(html.includes(SHARE_PLACEHOLDER), false);
     const data = shareData(html);
-    assert.equal(data.handle, 'sese2204');
+    assert.equal(data.handle, 'sese2204', 'leading @ is dropped');
     assert.equal(data.profile.schemaVersion, 1);
     const names = data.profile.claudeCode?.mcpServers.map((s) => s.name);
     assert.deepEqual(names, ['leaky-stdio', 'npx-server', 'proj-server', 'sse-one']);
@@ -48,19 +48,59 @@ test('share writes one HTML file with the handle and the data in place of the pl
   }
 });
 
-test('share --out and the default handle; a bad handle exits 2 and writes nothing', async () => {
+test('share --out and the default name; a bad name exits 2 and writes nothing', async () => {
   const { home, cleanup } = await makeHome();
   try {
     const ok = run(['share', '--no-usage', '--home', home, '--out', 'card.html'], home);
     assert.equal(ok.status, 0, ok.stderr);
     assert.equal(shareData(await readFile(join(home, 'card.html'), 'utf8')).handle, 'player');
-    for (const handle of ['bad handle', '', 'a'.repeat(40), '<script>']) {
-      const bad = run(['share', '--home', home, '--handle', handle, '--out', 'bad.html'], home);
-      assert.equal(bad.status, 2, handle);
+    const blank = run(['share', '--no-usage', '--home', home, '--name', '  ', '--out', 'blank.html'], home);
+    assert.equal(blank.status, 0, blank.stderr);
+    assert.equal(shareData(await readFile(join(home, 'blank.html'), 'utf8')).handle, 'player');
+    for (const name of ['a\nb', 'tab\there', 'del\u007f', 'a'.repeat(33), '가'.repeat(33)]) {
+      const bad = run(['share', '--home', home, '--name', name, '--out', 'bad.html'], home);
+      assert.equal(bad.status, 2, JSON.stringify(name));
+      assert.match(bad.stderr, /--name 값이 올바르지 않습니다/);
     }
     assert.equal(existsSync(join(home, 'bad.html')), false);
-    assert.equal(run(['scan', '--handle', 'x', '--home', home], home).status, 2, 'share-only option on scan');
+    const both = run(['share', '--home', home, '--name', 'a', '--handle', 'b', '--out', 'bad.html'], home);
+    assert.equal(both.status, 2, 'both --name and --handle');
+    assert.equal(run(['scan', '--name', 'x', '--home', home], home).status, 2, 'share-only option on scan');
+    assert.equal(run(['scan', '--handle', 'x', '--home', home], home).status, 2, 'share-only alias on scan');
     assert.equal(run(['share', '--json', '--home', home], home).status, 2, 'scan-only option on share');
+  } finally {
+    await cleanup();
+  }
+});
+
+test('--handle still works as a quiet alias of --name and is not in the help', async () => {
+  const { home, cleanup } = await makeHome();
+  try {
+    const r = run(['share', '--no-usage', '--home', home, '--handle', 'sese2204'], home);
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(shareData(await readFile(join(home, 'harness-sheet.html'), 'utf8')).handle, 'sese2204');
+    const help = run(['--help'], home);
+    assert.match(help.stdout, /--name <이름> +시트에 보일 이름\(닉네임\)\. 한글 가능, 32자까지 \(기본 player\)/);
+    assert.equal(help.stdout.includes('--handle'), false);
+  } finally {
+    await cleanup();
+  }
+});
+
+test('Korean, emoji and markup in the name survive the round trip without raw tags in the HTML', async () => {
+  const { home, cleanup } = await makeHome();
+  try {
+    const name = '세현 <b>&</b> 🧙‍♂️';
+    const max = '가'.repeat(32);
+    const r = run(['share', '--no-usage', '--home', home, '--name', name], home);
+    assert.equal(r.status, 0, r.stderr);
+    const html = await readFile(join(home, 'harness-sheet.html'), 'utf8');
+    assert.equal(shareData(html).handle, name);
+    assert.equal(html.includes('<b>'), false);
+    assert.equal(html.includes('</b>'), false);
+    const r32 = run(['share', '--no-usage', '--home', home, '--name', max, '--out', 'max.html'], home);
+    assert.equal(r32.status, 0, r32.stderr);
+    assert.equal(shareData(await readFile(join(home, 'max.html'), 'utf8')).handle, max);
   } finally {
     await cleanup();
   }

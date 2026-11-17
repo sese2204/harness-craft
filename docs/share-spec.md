@@ -7,14 +7,14 @@
 ## 명령
 
 ```
-harness-craft share [--out <file>] [--handle <name>] [--hide <glob>]... [--descriptions] [--no-usage] [--home <dir>]
+harness-craft share [--out <file>] [--name <이름>] [--hide <glob>]... [--descriptions] [--no-usage] [--home <dir>]
 ```
 
 | 옵션 | 동작 |
 |---|---|
 | (없음) | 스캔 → 공유용 프로필로 줄임 → `./harness-sheet.html` 에 저장 → 요약을 stderr 에 출력 |
 | `--out <file>` | 저장 위치 변경 |
-| `--handle <name>` | 시트에 쓸 이름. `^[A-Za-z0-9_.-]{1,39}$` 가 아니면 exit 2. 기본 `player` |
+| `--name <이름>` | 시트에 보일 이름(닉네임). 아무 글자나 된다(한글·이모지 포함). 앞뒤 공백과 앞쪽 `@` 를 떼고, 비면 기본 `player`. 제어 문자(U+0000–U+001F, U+007F)가 있거나 32자(코드 포인트 기준)를 넘으면 exit 2. 확인하거나 어디로 보내는 값이 아니라 화면에 쓰는 이름일 뿐이다. 예전 이름 `--handle` 도 같은 뜻으로 받지만 도움말에는 없다. 둘을 함께 주면 exit 2 |
 | `--hide <glob>` | 이름이 맞는 항목을 파일에서 뺀다. 대소문자 무시, `*` 만 와일드카드. 여러 번 줄 수 있다 |
 | `--descriptions` | 설명을 파일에 넣는다. 없으면 모든 설명을 비운다 |
 | `--no-usage`, `--home` | `scan` 과 같다 |
@@ -26,17 +26,20 @@ harness-craft share [--out <file>] [--handle <name>] [--hide <glob>]... [--descr
 
 ## 파일에 담기는 것
 
-`{ handle, profile }` JSON 하나다. `profile` 은 `harness-profile.json` 과 같은 스키마에서 아래만 바뀐다(`prepareShareProfile`).
+`{ handle, profile }` JSON 하나다. `handle` 은 `--name` 값이다(템플릿과의 약속이라 키 이름은 그대로 둔다).
+이름에 `<`·`>`·`&` 가 있어도 JSON 을 `<script>` 에 넣을 때 이스케이프하므로(아래 「템플릿」) 태그로 해석되지 않는다.
+시트는 이름의 공백을 `-` 로 바꾸고 32자에서 자른다(`normalizeHandle`). `profile` 은 `harness-profile.json` 과 같은 스키마에서 아래만 바뀐다(`prepareShareProfile`).
 
 | 항목 | 처리 |
 |---|---|
-| 숨긴 MCP·스킬·에이전트·플러그인·명령 | 배열에서 **아예 뺀다**. 표시만 숨기는 것이 아니라 JSON 에 남지 않는다 |
+| 숨긴 MCP·스킬·에이전트(Claude Code·Codex)·플러그인·명령 | 배열에서 **아예 뺀다**. 표시만 숨기는 것이 아니라 JSON 에 남지 않는다 |
 | 숨긴 훅 | `label` 이나 `event` 가 맞으면 뺀다 |
+| 훅 `matcher` | 늘 `null` 로 비운다. 시트가 쓰지 않고 `mcp__<서버>__*` 처럼 숨긴 이름이 들어 있을 수 있다 |
 | 숨긴 MCP 이름 | 에이전트 `mcpServers` 에서도 뺀다 |
-| 숨긴 플러그인 | 그 플러그인의 스킬·에이전트(`source: plugin:<이름>`)도 함께 뺀다 |
+| 숨긴 플러그인 | Claude Code·Codex 어느 쪽 플러그인이든 그 플러그인의 스킬·에이전트(`source: plugin:<이름>`)도 함께 뺀다. Codex 플러그인 훅은 출처 표시가 없어 함께 빠지지 않는다(훅 라벨로 따로 숨긴다) |
 | 설명 (`--descriptions` 없음) | 스킬·에이전트·명령 `description` 을 `''` 로, MCP 의 `package`·`host`·`command` 를 생략 |
 | `warnings` | 늘 비운다. 시트가 쓰지 않고 파일·항목 이름이 들어 있다 |
-| 그 밖 | 사용 횟수, 모델, 훅 matcher, 사용 기록 집계, 가림 처리 개수는 그대로 |
+| 그 밖 | 사용 횟수, 모델, 사용 기록 집계, `activity`(활동일 합계), 가림 처리 개수는 그대로 |
 
 Claude Code·Codex 두 소스에 똑같이 적용한다. 입력 프로필은 바꾸지 않는다.
 

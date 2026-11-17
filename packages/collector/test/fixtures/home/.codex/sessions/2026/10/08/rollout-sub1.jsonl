@@ -1,0 +1,7 @@
+{"timestamp":"2026-10-08T02:00:00.000Z","type":"session_meta","payload":{"id":"sub-1","cwd":"/Users/fakeuser/secret","source":{"subagent":{"thread_spawn":{"parent_thread_id":"main-1","depth":1,"agent_path":"/root/LEAK-PATH","agent_nickname":"LEAK-NICK","agent_role":"planner"}}}}}
+{"timestamp":"2026-10-08T02:00:00.000Z","type":"session_meta","payload":{"id":"main-1","cwd":"/Users/fakeuser/secret","source":"cli"}}
+{"timestamp":"2026-10-09T04:00:01.000Z","type":"turn_context","payload":{"turn_id":"T1","model":"gpt-5.5-sol","effort":"high"}}
+{"timestamp":"2026-10-09T04:00:01.000Z","type":"turn_context","payload":{"turn_id":"S0","model":"gpt-sub-model","effort":"minimal"}}
+{"timestamp":"2026-10-09T04:00:01.000Z","type":"turn_context","payload":{"turn_id":"S1","model":"gpt-sub-model","effort":"minimal"}}
+{"timestamp":"2026-10-09T04:00:01.000Z","type":"turn_context","payload":{"turn_id":"S2","model":"gpt-sub-model","effort":"minimal"}}
+{"timestamp":"2026-10-09T04:00:01.000Z","type":"turn_context","payload":{"turn_id":"S3","model":"gpt-sub-model","effort":"minimal"}}

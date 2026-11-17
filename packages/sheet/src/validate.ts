@@ -25,6 +25,9 @@ const CLAUDE_USAGE_FIELDS: Readonly<Record<string, Check>> = {
 const CODEX_USAGE_FIELDS: Readonly<Record<string, Check>> = {
   mcpCalls: isCount, subagentActivities: isCount, commandExecutions: isCount, activeDays: isCount,
 };
+const ACTIVITY_FIELDS: Readonly<Record<string, Check>> = {
+  activeDays: isCount, firstActivity: isStringOrNull, lastActivity: isStringOrNull,
+};
 
 function checkFields(value: unknown, fields: Readonly<Record<string, Check>>, path: string, errors: string[]): void {
   if (!isRecord(value)) {
@@ -54,7 +57,8 @@ function checkSource(value: unknown, path: string, kind: 'claude' | 'codex', err
   checkList(value, 'mcpServers', MCP_FIELDS, path, errors);
   checkList(value, 'skills', SKILL_FIELDS, path, errors);
   checkList(value, 'hooks', HOOK_FIELDS, path, errors);
-  if (kind === 'claude') checkList(value, 'agents', AGENT_FIELDS, path, errors);
+  // codex.agents is optional: profiles written before Codex agents were collected do not have it.
+  if (kind === 'claude' || value.agents !== undefined) checkList(value, 'agents', AGENT_FIELDS, path, errors);
   checkFields(value.instructions, { lines: isCount }, `${path}.instructions`, errors);
   if (value.usage !== null) {
     checkFields(value.usage, kind === 'claude' ? CLAUDE_USAGE_FIELDS : CODEX_USAGE_FIELDS, `${path}.usage`, errors);
@@ -79,6 +83,8 @@ export function parseProfile(input: unknown): ParseResult {
     if (key in input) checkSource(input[key], key, kind, errors);
     else errors.push(`${key} 키가 없습니다`);
   }
+  // Optional for older files; null when no usage scan ran.
+  if (input.activity !== undefined && input.activity !== null) checkFields(input.activity, ACTIVITY_FIELDS, 'activity', errors);
   if (errors.length > 0) {
     const extra = errors.length > MAX_ERRORS ? [`외 ${errors.length - MAX_ERRORS}건`] : [];
     return { ok: false, errors: [...errors.slice(0, MAX_ERRORS), ...extra] };

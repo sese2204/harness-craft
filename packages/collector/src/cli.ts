@@ -1,18 +1,18 @@
 #!/usr/bin/env node
 import { writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 
 import { collectProfile } from './collect.js';
 import { writeShareSheet, formatShareSummary } from './shareCommand.js';
-import { DEFAULT_SHARE_HANDLE, SHARE_HANDLE_PATTERN } from './shareFormat.js';
+import { DEFAULT_SHARE_HANDLE, SHARE_NAME_MAX_LENGTH, validateShareName } from './shareFormat.js';
 import { formatSummary } from './summary.js';
 
 const DEFAULT_OUT = 'harness-profile.json';
 const DEFAULT_SHARE_OUT = 'harness-sheet.html';
 const USAGE = `사용법: harness-craft [scan] [--out <file>] [--json] [--no-usage] [--home <dir>]
-       harness-craft share [--out <file>] [--handle <name>] [--hide <glob>]... [--descriptions] [--no-usage] [--home <dir>]
+       harness-craft share [--out <file>] [--name <이름>] [--hide <glob>]... [--descriptions] [--no-usage] [--home <dir>]
 
 scan (기본) — 설정과 사용 기록을 읽어 harness-profile.json 을 만든다
   --out <file>      저장 위치 (기본 ./${DEFAULT_OUT})
@@ -20,16 +20,18 @@ scan (기본) — 설정과 사용 기록을 읽어 harness-profile.json 을 만
 
 share — 혼자 열리는 캐릭터 시트 HTML 한 장을 만든다
   --out <file>      저장 위치 (기본 ./${DEFAULT_SHARE_OUT})
-  --handle <name>   시트에 쓸 이름 (영문·숫자·_.- 39자까지, 기본 ${DEFAULT_SHARE_HANDLE})
+  --name <이름>     시트에 보일 이름(닉네임). 한글 가능, ${SHARE_NAME_MAX_LENGTH}자까지 (기본 ${DEFAULT_SHARE_HANDLE})
   --hide <glob>     이름이 맞는 MCP·스킬·에이전트·플러그인·명령·훅을 파일에서 뺌 (대소문자 무시, * 가능, 여러 번)
   --descriptions    설명을 파일에 넣음 (기본은 뺌)
 
 공통
   --no-usage        대화 기록 집계를 건너뜀 (usage 는 null)
-  --home <dir>      홈 디렉터리 대신 쓸 경로 (테스트·디버그용)
+  --home <dir>      홈 디렉터리 대신 쓸 경로 (테스트·디버그용). 주면 $CODEX_HOME 대신 <dir>/.codex 를 읽음
+
+Codex 설정은 $CODEX_HOME (없으면 ~/.codex) 에서 읽는다.
 `;
 
-type CommonOptions = { usage: boolean; home: string };
+type CommonOptions = { usage: boolean; home: string; codexHome: string };
 type ScanOptions = CommonOptions & { command: 'scan'; out: string; json: boolean };
 type ShareCliOptions = CommonOptions & { command: 'share'; out: string; handle: string; hide: string[]; descriptions: boolean };
 type CliOptions = ScanOptions | ShareCliOptions;
@@ -37,7 +39,7 @@ type CliOptions = ScanOptions | ShareCliOptions;
 class UsageError extends Error {}
 
 const SCAN_ONLY = ['json'] as const;
-const SHARE_ONLY = ['handle', 'hide', 'descriptions'] as const;
+const SHARE_ONLY = ['name', 'handle', 'hide', 'descriptions'] as const;
 
 function parseCli(argv: readonly string[]): CliOptions | 'help' {
   const { values, positionals } = parseArgs({
@@ -49,6 +51,8 @@ function parseCli(argv: readonly string[]): CliOptions | 'help' {
       json: { type: 'boolean' },
       'no-usage': { type: 'boolean', default: false },
       home: { type: 'string' },
+      name: { type: 'string' },
+      // Old spelling of --name, kept working but no longer documented.
       handle: { type: 'string' },
       hide: { type: 'string', multiple: true },
       descriptions: { type: 'boolean' },
@@ -62,22 +66,34 @@ function parseCli(argv: readonly string[]): CliOptions | 'help' {
   }
   const foreign = (command === 'scan' ? SHARE_ONLY : SCAN_ONLY).filter((key) => values[key] !== undefined);
   if (foreign.length > 0) throw new UsageError(`${command} 에는 쓸 수 없는 옵션: ${foreign.map((k) => `--${k}`).join(' ')}`);
-  const common: CommonOptions = { usage: values['no-usage'] !== true, home: resolve(values.home ?? homedir()) };
+  const home = resolve(values.home ?? homedir());
+  const common: CommonOptions = { usage: values['no-usage'] !== true, home, codexHome: codexHomeFor(values.home, home) };
   if (command === 'scan') {
     return { ...common, command, out: resolve(values.out ?? DEFAULT_OUT), json: values.json === true };
-  }
-  const handle = values.handle ?? DEFAULT_SHARE_HANDLE;
-  if (!SHARE_HANDLE_PATTERN.test(handle)) {
-    throw new UsageError(`--handle 은 영문·숫자·_.- 로 1~39자여야 합니다: ${JSON.stringify(handle)}`);
   }
   return {
     ...common,
     command,
     out: resolve(values.out ?? DEFAULT_SHARE_OUT),
-    handle,
+    handle: shareName(values.name, values.handle),
     hide: values.hide ?? [],
     descriptions: values.descriptions === true,
   };
+}
+
+/** --home pins everything under it (tests, debugging); otherwise $CODEX_HOME, else ~/.codex. */
+function codexHomeFor(homeFlag: string | undefined, home: string): string {
+  const env = process.env.CODEX_HOME;
+  return homeFlag === undefined && env !== undefined && env.trim() !== '' ? resolve(env) : join(home, '.codex');
+}
+
+/** --name, or its old alias --handle. Both at once is an error. */
+function shareName(name: string | undefined, alias: string | undefined): string {
+  if (name !== undefined && alias !== undefined) throw new UsageError('--name 과 --handle 은 같은 옵션입니다. 하나만 쓰세요.');
+  const flag = alias !== undefined ? '--handle' : '--name';
+  const result = validateShareName(name ?? alias ?? '');
+  if (!result.ok) throw new UsageError(`${flag} 값이 올바르지 않습니다: ${result.error}`);
+  return result.name;
 }
 
 function progressReporter(label: string) {
@@ -88,7 +104,7 @@ function progressReporter(label: string) {
 }
 
 async function runScan(options: ScanOptions): Promise<number> {
-  const profile = await collectProfile({ home: options.home, usage: options.usage, onProgress: progressReporter });
+  const profile = await collectProfile({ home: options.home, codexHome: options.codexHome, usage: options.usage, onProgress: progressReporter });
   const json = JSON.stringify(profile, null, 2) + '\n';
   if (options.json) {
     process.stdout.write(json);
@@ -101,7 +117,7 @@ async function runScan(options: ScanOptions): Promise<number> {
 }
 
 async function runShare(options: ShareCliOptions): Promise<number> {
-  const profile = await collectProfile({ home: options.home, usage: options.usage, onProgress: progressReporter });
+  const profile = await collectProfile({ home: options.home, codexHome: options.codexHome, usage: options.usage, onProgress: progressReporter });
   const result = await writeShareSheet(profile, options);
   process.stderr.write(formatShareSummary(result, options.descriptions));
   return 0;

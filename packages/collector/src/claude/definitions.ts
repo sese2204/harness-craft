@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 
 import type { ScanContext } from '../context.js';
-import { definitionName, toAgent, toSkill, usageKeys } from '../definitions.js';
+import { definitionName, toAgent, toSkill, usageKeys, usedBuiltinAgents } from '../definitions.js';
 import { sortByName } from '../fsutil.js';
 import { readFlatDefinitions, readSkillDefinitions, type RawDefinition } from '../items.js';
 import type { Agent, Skill, Source } from '../types.js';
@@ -13,6 +13,11 @@ export type TranscriptCounts = {
   slashCalls: ReadonlyMap<string, number>;
   agentCalls: ReadonlyMap<string, number>;
 };
+
+/** Agents that ship with Claude Code (Agent/Task `subagent_type`). Shown only when used. */
+export const CLAUDE_BUILTIN_AGENTS: readonly string[] = [
+  'general-purpose', 'Explore', 'Plan', 'claude', 'statusline-setup', 'claude-code-guide',
+];
 
 const EMPTY_COUNTS: TranscriptCounts = { skillCalls: new Map(), slashCalls: new Map(), agentCalls: new Map() };
 
@@ -79,10 +84,11 @@ export async function collectClaudeAgents(
   const items = await gather(join(claudeDir, 'agents'), plugins, 'agents', ctx);
   const userNames = new Set(items.filter((i) => i.source === 'user').map((i) => definitionName(i.def)));
   const agentCalls = (counts ?? EMPTY_COUNTS).agentCalls;
-  return sortByName(
-    items.map(({ def, source }) => {
-      const uses = usageKeys(definitionName(def), source, userNames).reduce((sum, k) => sum + (agentCalls.get(k) ?? 0), 0);
-      return toAgent(def, source, uses, ctx);
-    }),
-  );
+  const defined = items.map(({ def, source }) => {
+    const uses = usageKeys(definitionName(def), source, userNames).reduce((sum, k) => sum + (agentCalls.get(k) ?? 0), 0);
+    return toAgent(def, source, uses, ctx);
+  });
+  // Any defined agent (user or plugin) with a built-in's bare name takes those calls, so the built-in is not listed.
+  const definedNames = new Set(items.map((i) => definitionName(i.def)));
+  return sortByName([...defined, ...usedBuiltinAgents(CLAUDE_BUILTIN_AGENTS, definedNames, agentCalls)]);
 }

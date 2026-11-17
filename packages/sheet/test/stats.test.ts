@@ -97,3 +97,14 @@ test('usage null → usage-based axes and level are 0', () => {
   assert.equal(sheet.level.level, 0);
   assert.equal(sheet.level.exp, 0);
 });
+
+test('consistency uses the cross-tool union (activity) when present, else the larger activeDays', () => {
+  const claudeCode = claudeSource({ usage: { ...claudeSource().usage!, activeDays: 50 } });
+  const codex = codexSource({ usage: { ...codexSource().usage!, activeDays: 50 } });
+  const raw = (p: ReturnType<typeof profile>) => toSheet(p, visibility()).stats.find((s) => s.key === 'consistency')?.raw;
+  const union = { activeDays: 100, firstActivity: '2026-01-01', lastActivity: '2026-11-01' };
+  assert.equal(raw(profile({ claudeCode, codex, activity: union })), 100);
+  // Older file without `activity`, and a profile scanned with --no-usage (activity null): fall back to max.
+  assert.equal(raw(profile({ claudeCode, codex })), 50);
+  assert.equal(raw(profile({ claudeCode, codex, activity: null })), 50);
+});

@@ -24,18 +24,24 @@ async function scanUsage(claudeDir: string, ctx: ScanContext): Promise<ClaudeTra
   }
 }
 
-/** Returns null when neither ~/.claude nor ~/.claude.json exists. */
-export async function collectClaudeCode(ctx: ScanContext, options: { usage: boolean }): Promise<ClaudeCodeSource | null> {
+export type ClaudeCodeResult = {
+  source: ClaudeCodeSource | null;
+  /** Transcript dates for the cross-tool activity union. null when no transcript scan ran. */
+  days: ReadonlySet<string> | null;
+};
+
+/** source is null when neither ~/.claude nor ~/.claude.json exists. */
+export async function collectClaudeCode(ctx: ScanContext, options: { usage: boolean }): Promise<ClaudeCodeResult> {
   const claudeDir = join(ctx.home, '.claude');
   const [hasDir, hasJson] = await Promise.all([pathExists(claudeDir), pathExists(join(ctx.home, '.claude.json'))]);
-  if (!hasDir && !hasJson) return null;
+  if (!hasDir && !hasJson) return { source: null, days: null };
 
   const config = await readClaudeConfig(ctx.home, ctx.diag);
   const scan = options.usage ? await scanUsage(claudeDir, ctx) : null;
   const installed = await readInstalledPlugins(claudeDir, ctx);
   const { settings, claudeJson } = config;
 
-  return {
+  const source: ClaudeCodeSource = {
     model: ctx.redactor.optional(stringValue(settings, 'model'), MAX_SHORT_FIELD_LENGTH),
     since: ctx.redactor.optional(stringValue(claudeJson, 'claudeCodeFirstTokenDate') ?? stringValue(claudeJson, 'firstStartTime'), MAX_SHORT_FIELD_LENGTH),
     startups: numberField(claudeJson, 'numStartups'),
@@ -48,4 +54,5 @@ export async function collectClaudeCode(ctx: ScanContext, options: { usage: bool
     instructions: await readInstructions(join(claudeDir, 'CLAUDE.md'), ctx.diag),
     usage: scan?.usage ?? null,
   };
+  return { source, days: scan?.days ?? null };
 }

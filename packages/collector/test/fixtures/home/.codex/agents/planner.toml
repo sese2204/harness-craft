@@ -1,0 +1,7 @@
+name = "planner"
+description = "Plans work. Key __FAKE_SK__"
+model = "gpt-5.5-sol"
+model_reasoning_effort = "high"
+developer_instructions = """
+LEAK-CODEX-INSTRUCTIONS: never copy this text anywhere.
+"""

@@ -11,23 +11,34 @@ export function definitionName(def: RawDefinition): string {
   return stringField(def.data, 'name') ?? def.fallbackName;
 }
 
+/** Plugin name of a `plugin:<name>` source, null for 'user' and 'builtin'. */
+export function pluginOf(source: Source): string | null {
+  return source.startsWith('plugin:') ? source.slice('plugin:'.length) : null;
+}
+
 /** Keys to look up usage under: plugin items are tried as '<plugin>:<name>' and bare '<name>'. */
 export function usageKeys(name: string, source: Source, userNames: ReadonlySet<string>): string[] {
-  if (source === 'user') return [name];
-  const plugin = source.slice('plugin:'.length);
+  const plugin = pluginOf(source);
+  if (plugin === null) return [name];
   // A bare name owned by a user-level item is not attributed to the plugin item.
   return userNames.has(name) ? [`${plugin}:${name}`] : [`${plugin}:${name}`, name];
 }
 
 export function qualifiedName(name: string, source: Source): string {
-  return source === 'user' ? name : `${source.slice('plugin:'.length)}:${name}`;
+  const plugin = pluginOf(source);
+  return plugin === null ? name : `${plugin}:${name}`;
+}
+
+function redactedSource(source: Source, ctx: ScanContext): Source {
+  const plugin = pluginOf(source);
+  return plugin === null ? source : `plugin:${ctx.redactor.text(plugin, MAX_NAME_LENGTH)}`;
 }
 
 export function toSkill(def: RawDefinition, source: Source, usage: ReturnType<UsageLookup>, ctx: ScanContext): Skill {
   return {
     name: ctx.redactor.text(qualifiedName(definitionName(def), source), MAX_NAME_LENGTH),
     description: ctx.redactor.text(stringField(def.data, 'description') ?? ''),
-    source: source === 'user' ? 'user' : `plugin:${ctx.redactor.text(source.slice('plugin:'.length), MAX_NAME_LENGTH)}`,
+    source: redactedSource(source, ctx),
     uses: usage.uses,
     lastUsedAt: usage.lastUsedAt,
   };
@@ -58,9 +69,25 @@ export function toAgent(def: RawDefinition, source: Source, uses: number, ctx: S
     effort: redactor.optional(stringField(def.data, 'effort'), MAX_SHORT_FIELD_LENGTH),
     toolCount: tools === null ? null : tools.length,
     mcpServers: mcpServersOf(tools ?? []).map((s) => redactor.text(s, MAX_NAME_LENGTH)),
-    source: source === 'user' ? 'user' : `plugin:${redactor.text(source.slice('plugin:'.length), MAX_NAME_LENGTH)}`,
+    source: redactedSource(source, ctx),
     uses,
   };
+}
+
+/** An agent that ships with the tool. Listed only when used, so `uses` is at least 1. Name is a constant, not user text. */
+export function builtinAgent(name: string, uses: number): Agent {
+  return { name, description: '', model: null, effort: null, toolCount: null, mcpServers: [], source: 'builtin', uses };
+}
+
+/** Built-ins that were used and are not shadowed by a defined agent of the same name. */
+export function usedBuiltinAgents(
+  builtins: readonly string[],
+  defined: ReadonlySet<string>,
+  calls: ReadonlyMap<string, number>,
+): Agent[] {
+  return builtins
+    .filter((name) => !defined.has(name) && (calls.get(name) ?? 0) > 0)
+    .map((name) => builtinAgent(name, calls.get(name) ?? 0));
 }
 
 export function toCommand(def: RawDefinition, ctx: ScanContext): Command {

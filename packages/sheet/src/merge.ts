@@ -1,5 +1,5 @@
 // Merges Claude Code and Codex into one character and removes hidden items (docs/sheet-mapping.md 「합치기」).
-import type { HarnessProfile, McpServer, Skill, Source } from '@harness-craft/schema';
+import type { Agent, HarnessProfile, McpServer, Skill, Source } from '@harness-craft/schema';
 
 import { compareNames } from './rank.js';
 import type { HiddenKind, Origin, Visibility } from './types.js';
@@ -95,17 +95,19 @@ function mergeSkills(lists: ReadonlyArray<readonly [Origin, readonly Skill[]]>):
   return byName(merged);
 }
 
-function mergeAgents(profile: HarnessProfile): MergedAgent[] {
+function mergeAgents(lists: ReadonlyArray<readonly [Origin, readonly Agent[]]>): MergedAgent[] {
   const merged = new Map<string, MergedAgent>();
-  for (const agent of profile.claudeCode?.agents ?? []) {
-    const prev = merged.get(agent.name);
-    merged.set(agent.name, {
-      name: agent.name,
-      uses: (prev?.uses ?? 0) + agent.uses,
-      desc: prev?.desc || agent.description,
-      model: prev?.model ?? agent.model,
-      origins: ['claude'],
-    });
+  for (const [origin, agents] of lists) {
+    for (const agent of agents) {
+      const prev = merged.get(agent.name);
+      merged.set(agent.name, {
+        name: agent.name,
+        uses: (prev?.uses ?? 0) + agent.uses,
+        desc: prev?.desc || agent.description,
+        model: prev?.model ?? agent.model,
+        origins: addOrigin(prev?.origins ?? [], origin),
+      });
+    }
   }
   return byName(merged);
 }
@@ -126,7 +128,11 @@ export function mergeProfile(profile: HarnessProfile): MergedHarness {
       ['claude', claude?.skills ?? []],
       ['codex', codex?.skills ?? []],
     ]),
-    agents: mergeAgents(profile),
+    agents: mergeAgents([
+      ['claude', claude?.agents ?? []],
+      // Older profiles have no codex.agents.
+      ['codex', codex?.agents ?? []],
+    ]),
     hooks,
   };
 }

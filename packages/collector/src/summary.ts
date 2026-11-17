@@ -25,13 +25,13 @@ function claudeLines(c: ClaudeCodeSource): string[] {
 function codexLines(c: CodexSource): string[] {
   const lines = [
     `Codex — 모델 ${c.model ?? '-'}${c.reasoningEffort ? ` (${c.reasoningEffort})` : ''}`,
-    `  MCP ${c.mcpServers.length} · 스킬 ${c.skills.length} · 훅 ${c.hooks.length} · 프롬프트 ${c.commands.length} · 규칙 파일 ${c.rulesFiles}`,
+    `  MCP ${c.mcpServers.length} · 스킬 ${c.skills.length} · 에이전트 ${c.agents?.length ?? 0} · 훅 ${c.hooks.length} · 플러그인 ${c.plugins?.length ?? 0} · 프롬프트 ${c.commands.length} · 규칙 파일 ${c.rulesFiles}`,
     `  AGENTS.md ${c.instructions.present ? `${c.instructions.lines}줄` : '없음'}`,
   ];
   const u = c.usage;
   if (u) {
     lines.push(
-      `  사용 기록: 세션 ${u.sessions} · MCP 호출 ${u.mcpCalls} · 서브에이전트 ${u.subagentActivities} · 명령 실행 ${u.commandExecutions} · 활동일 ${u.activeDays}${range(u.firstActivity, u.lastActivity)}`,
+      `  사용 기록: 세션 ${u.sessions}${u.execSessions ? ` (+ exec ${u.execSessions})` : ''} · MCP 호출 ${u.mcpCalls} · 서브에이전트 실행 ${u.subagentActivities} · 명령 실행 ${u.commandExecutions} · 활동일 ${u.activeDays}${range(u.firstActivity, u.lastActivity)}`,
     );
   }
   return lines;
@@ -44,6 +44,7 @@ export function formatSummary(profile: HarnessProfile, savedTo: string | null): 
     `harness-craft ${profile.collector.version} 스캔 결과`,
     ...(profile.claudeCode ? claudeLines(profile.claudeCode) : ['Claude Code — 찾지 못함']),
     ...(profile.codex ? codexLines(profile.codex) : ['Codex — 찾지 못함']),
+    ...(profile.activity ? [`활동일 합계 ${profile.activity.activeDays}일 (두 도구 중 하루라도 쓴 날)${range(profile.activity.firstActivity, profile.activity.lastActivity)}`] : []),
     `가림 처리: 경로 ${r.paths} · 이메일 ${r.emails} · 비밀값 ${r.secrets} · URL ${r.urls}`,
   ];
   if (profile.warnings.length > 0) {

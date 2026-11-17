@@ -86,6 +86,9 @@ function shareCodex(c: CodexSource, filter: Filter): CodexSource {
     skills: keep(c.skills, filter, (s) => fromHiddenPlugin(s.source, filter)).map((s) => described(s, filter)),
     hooks: shareHooks(c.hooks, filter),
     commands: keep(c.commands, filter).map((cmd) => described(cmd, filter)),
+    // Older profiles have no Codex agents or plugins; keep the keys absent rather than inventing empty lists.
+    ...(c.agents ? { agents: shareAgents(c.agents, filter) } : {}),
+    ...(c.plugins ? { plugins: keep(c.plugins, filter).map((p) => ({ ...p })) } : {}),
   };
 }
 
@@ -93,7 +96,9 @@ function itemCount(profile: HarnessProfile): number {
   const c = profile.claudeCode;
   const x = profile.codex;
   const claude = c ? c.mcpServers.length + c.skills.length + c.agents.length + c.hooks.length + c.plugins.length + c.commands.length : 0;
-  const codex = x ? x.mcpServers.length + x.skills.length + x.hooks.length + x.commands.length : 0;
+  const codex = x
+    ? x.mcpServers.length + x.skills.length + (x.agents?.length ?? 0) + (x.plugins?.length ?? 0) + x.hooks.length + x.commands.length
+    : 0;
   return claude + codex;
 }
 
@@ -104,7 +109,8 @@ function itemCount(profile: HarnessProfile): number {
  */
 export function prepareShareProfile(profile: HarnessProfile, options: ShareOptions): PreparedShare {
   const isHidden = globMatcher(options.hide);
-  const plugins = profile.claudeCode?.plugins ?? [];
+  // A hidden plugin name takes that plugin's skills and agents with it, in either tool.
+  const plugins = [...(profile.claudeCode?.plugins ?? []), ...(profile.codex?.plugins ?? [])];
   const filter: Filter = {
     isHidden,
     hiddenPlugins: new Set(plugins.filter((p) => isHidden(p.name)).map((p) => p.name)),
@@ -115,6 +121,8 @@ export function prepareShareProfile(profile: HarnessProfile, options: ShareOptio
     collector: { ...profile.collector },
     claudeCode: profile.claudeCode ? shareClaude(profile.claudeCode, filter) : null,
     codex: profile.codex ? shareCodex(profile.codex, filter) : null,
+    // Counts and first/last day only, so it goes through unchanged.
+    ...(profile.activity !== undefined ? { activity: profile.activity && { ...profile.activity } } : {}),
     redactions: { ...profile.redactions },
     warnings: [],
   };

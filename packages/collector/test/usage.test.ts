@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
+import { appendFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { test } from 'node:test';
 
-import { byName, scanFixture } from './helpers.js';
+import { collectProfile } from '../src/collect.js';
+import { byName, FIXED_NOW, makeHome, scanFixture } from './helpers.js';
 
 test('Claude transcripts: dedupe by tool_use id, builtin tools, sessions, dates', async () => {
   const { profile } = await scanFixture();
@@ -55,4 +58,37 @@ test('agent uses come from Agent and Task subagent_type', async () => {
   assert.equal(byName(c.agents, 'reviewer').uses, 1);
   assert.equal(byName(c.agents, 'myplug:helper').uses, 1);
   assert.equal(byName(c.agents, 'free').uses, 0);
+});
+
+test('used Claude Code built-in agents are listed as builtin; unused or shadowed ones are not', async () => {
+  const { home, cleanup } = await makeHome();
+  try {
+    const call = (id: string, type: string) => ({ type: 'tool_use', id, name: 'Agent', input: { subagent_type: type } });
+    const record = {
+      type: 'assistant',
+      timestamp: '2026-10-05T02:00:00.000Z',
+      message: { content: [call('b1', 'Explore'), call('b2', 'Explore'), call('b3', 'general-purpose')] },
+    };
+    await appendFile(join(home, '.claude', 'projects', '-Users-fakeuser-proj', 'sess2.jsonl'), `\n${JSON.stringify(record)}\n`);
+    // A user agent with a built-in's name takes its calls; the built-in is not listed twice.
+    await writeFile(join(home, '.claude', 'agents', 'general-purpose.md'), '---\nname: general-purpose\ndescription: Mine\n---\n');
+    const agents = (await collectProfile({ home, usage: true, now: FIXED_NOW })).claudeCode?.agents ?? [];
+    assert.deepEqual(byName(agents, 'Explore'), {
+      name: 'Explore', description: '', model: null, effort: null, toolCount: null, mcpServers: [], source: 'builtin', uses: 2,
+    });
+    assert.deepEqual(agents.filter((a) => a.name === 'general-purpose').map((a) => [a.source, a.uses]), [['user', 1]]);
+    for (const unused of ['Plan', 'claude', 'statusline-setup', 'claude-code-guide']) {
+      assert.equal(agents.some((a) => a.name === unused), false, unused);
+    }
+  } finally {
+    await cleanup();
+  }
+});
+
+test('no built-in agent is listed for the plain fixture or without usage', async () => {
+  for (const usage of [true, false]) {
+    const c = (await scanFixture({ usage })).profile.claudeCode;
+    assert.ok(c);
+    assert.equal(c.agents.some((a) => a.source === 'builtin'), false);
+  }
 });

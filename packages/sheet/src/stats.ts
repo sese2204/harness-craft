@@ -45,7 +45,8 @@ export function statInputs(profile: HarnessProfile, merged: MergedHarness): Reco
     command: sum(merged.agents.map((a) => a.uses)) + (cu?.subagentRuns ?? 0) + (xu?.subagentActivities ?? 0),
     tooling: sum(merged.mcp.map((m) => m.calls)),
     execution: sum(EXECUTION_TOOLS.map((t) => builtin[t] ?? 0)) + (xu?.commandExecutions ?? 0),
-    consistency: Math.max(cu?.activeDays ?? 0, xu?.activeDays ?? 0),
+    // Union of days across both tools; files written before `activity` existed fall back to the larger of the two.
+    consistency: profile.activity?.activeDays ?? Math.max(cu?.activeDays ?? 0, xu?.activeDays ?? 0),
   };
 }
 

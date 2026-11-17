@@ -8,13 +8,13 @@ Turn your Claude Code and Codex harness into a pixel-RPG character sheet: one se
 ## 쓰는 법
 
 ```bash
-npx harness-craft share --handle <내-아이디>
+npx harness-craft share --name <닉네임>
 # → ./harness-sheet.html
 ```
 
 | 옵션 | 동작 |
 |---|---|
-| `--handle <이름>` | 시트에 보일 이름. 영문·숫자·`_.-` 39자까지. 기본 `player` |
+| `--name <이름>` | 시트에 보일 이름(닉네임). 한글·이모지도 되고 32자까지. 기본 `player` |
 | `--hide <glob>` | 이름이 맞는 MCP·스킬·에이전트·플러그인·훅을 파일에서 아예 뺀다. `*` 와일드카드, 대소문자 무시, 여러 번 쓸 수 있다 |
 | `--descriptions` | 스킬·에이전트 설명을 넣는다. 기본은 뺀다 |
 | `--out <파일>` | 저장 위치. 기본 `./harness-sheet.html` |
@@ -31,10 +31,16 @@ npx harness-craft share --handle <내-아이디>
 | `~/.claude.json`, `~/.claude/settings.json` | MCP 서버 이름, 훅 이벤트, 모델, 플러그인 |
 | `~/.claude/skills`, `~/.claude/agents`, 플러그인 | 스킬·에이전트 이름(설명은 `--descriptions` 일 때만) |
 | `~/.claude/projects/**/*.jsonl` | 도구·스킬·에이전트·MCP 호출 횟수와 활동일 |
-| `~/.codex/config.toml`, `hooks.json`, `skills`, `sessions` | 같은 항목의 Codex 쪽 값 |
+| `~/.codex/config.toml`, `hooks.json`, `AGENTS.md`(`AGENTS.override.md` 우선) | 같은 항목의 Codex 쪽 값. `enabled = false` 인 MCP·스킬·훅·플러그인은 뺀다 |
+| `~/.codex/skills`(`.system` 포함), `~/.agents/skills` | Codex 스킬 이름. 시스템 스킬은 쓴 적이 있을 때만 |
+| `~/.codex/plugins/cache/**/.codex-plugin/plugin.json` | Codex 플러그인 이름·버전, 플러그인 스킬·훅 |
+| `~/.codex/sessions/**/*.jsonl` | 세션 수(대화형·exec), 스킬·MCP·명령 호출 횟수, 가장 많이 쓴 모델, 활동일 |
+| `~/.codex/agents/*.toml`, `config.toml` 의 `[agents.*]` | Codex 커스텀 에이전트 이름·설명·모델(`developer_instructions` 는 담지 않음) |
+| 위 두 도구의 날짜 | 활동일 수와 첫날·마지막 날(날짜 목록은 담지 않음) |
 
 환경변수 값, 헤더, 명령 인자, 파일 본문, 절대 경로, 대화 내용은 담지 않는다.
 `~/.codex/auth.json`, `~/.claude/.credentials.json`, sqlite 파일은 열지 않는다.
+`$CODEX_HOME` 을 정해 두었으면 `~/.codex` 대신 그 폴더를 읽는다.
 MCP 서버 주소는 공개 서비스로 알려진 곳만 남기고, 공유 파일에서는 그마저 뺀다.
 
 ## 라이선스

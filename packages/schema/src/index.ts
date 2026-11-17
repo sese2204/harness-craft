@@ -1,6 +1,7 @@
 // Output schema for harness-profile.json (docs/collector-spec.md, schemaVersion 1). Shared by the collector and the sheet.
 
-export type Source = 'user' | `plugin:${string}`;
+/** `builtin` = an agent that ships with the tool (Claude Code `Explore`, Codex `worker`), listed only when used. */
+export type Source = 'user' | 'builtin' | `plugin:${string}`;
 
 export type McpServer = {
   name: string;
@@ -62,7 +63,10 @@ export type ClaudeUsage = {
 };
 
 export type CodexUsage = {
+  /** Interactive sessions: not subagent rollouts, not `codex exec`. */
   sessions: number;
+  /** Non-interactive `codex exec` runs. Optional for older files. */
+  execSessions?: number;
   mcpCalls: number;
   subagentActivities: number;
   commandExecutions: number;
@@ -94,8 +98,15 @@ export type CodexSource = {
   commands: Command[];
   instructions: Instructions;
   rulesFiles: number;
+  /** Optional so profiles written before Codex agents were collected still parse. The collector always emits it. */
+  agents?: Agent[];
+  /** Optional so older profiles still parse. The collector always emits it. */
+  plugins?: Plugin[];
   usage: CodexUsage | null;
 };
+
+/** Active days across both tools (union of dates, not the larger of the two). Counts only; the day list is not kept. */
+export type Activity = { activeDays: number; firstActivity: string | null; lastActivity: string | null };
 
 export type Redactions = { paths: number; emails: number; secrets: number; urls: number };
 
@@ -105,6 +116,8 @@ export type HarnessProfile = {
   collector: { name: 'harness-craft'; version: string };
   claudeCode: ClaudeCodeSource | null;
   codex: CodexSource | null;
+  /** Optional for older files. null when no usage scan ran (`--no-usage`, or neither tool found). */
+  activity?: Activity | null;
   redactions: Redactions;
   warnings: string[];
 };

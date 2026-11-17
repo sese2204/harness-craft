@@ -13,3 +13,58 @@ TOKEN = "LEAK-CODEX-ENV"
 
 [mcp_servers.web]
 url = "https://mcp.exa.ai/mcp/LEAK-CODEX-URL"
+
+[agents]
+max_threads = 4
+max_concurrent_threads_per_session = 2
+default_subagent_model = "gpt-test"
+interrupt_message = "LEAK-CODEX-INTERRUPT"
+
+[agents.reviewer]
+description = "Reviews diffs"
+config_file = "agents/roles/reviewer.toml"
+nickname_candidates = ["Ada", "Grace"]
+
+[agents.outsider]
+description = "Role file lives outside the home directory"
+config_file = "../../outside-LEAK.toml"
+
+[agents.lostfile]
+description = "Role file is missing"
+config_file = "agents/roles/missing.toml"
+
+[agents.planner]
+description = "Old-style planner, shadowed by agents/planner.toml"
+
+[mcp_servers.off-mcp]
+command = "off-mcp"
+enabled = false
+
+[[skills.config]]
+name = "offskill"
+enabled = false
+
+[[skills.config]]
+name = "worklog"
+enabled = false
+
+[[skills.config]]
+name = "worklog"
+enabled = true
+
+[plugins."offplug@mkt"]
+enabled = false
+
+[features]
+hooks = true
+
+[[hooks.PostToolUse]]
+matcher = "Bash"
+hooks = [{ type = "command", command = "/Users/fakeuser/bin/inline-guard.sh LEAK-INLINE-ARG" }]
+
+[hooks.state."__HOME__/.codex/hooks.json:stop:1:0"]
+enabled = false
+trusted_hash = "sha256:abc"
+
+[hooks.state."__HOME__/.codex/hooks.json:stop:0:0"]
+enabled = true

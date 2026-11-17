@@ -6,15 +6,15 @@ import { parseFrontmatter, stringField } from './frontmatter.js';
 import { compareStrings, isMissing, listEntries, readTextOrNull } from './fsutil.js';
 import type { Instructions } from './types.js';
 
-/** Frontmatter-derived fields of one markdown definition (skill, agent, command). Unredacted. */
-export type RawDefinition = { fallbackName: string; data: Record<string, unknown> };
+/** Frontmatter-derived fields of one markdown definition (skill, agent, command). Unredacted. `path` is never exported. */
+export type RawDefinition = { fallbackName: string; data: Record<string, unknown>; path?: string };
 
 async function readDefinition(path: string, fallbackName: string, diag: Diagnostics): Promise<RawDefinition | null> {
   const text = await readTextOrNull(path, diag);
   if (text === null) return null;
   const fm = parseFrontmatter(text);
   if (fm.error) diag.warn(path, fm.error);
-  return { fallbackName, data: fm.data };
+  return { fallbackName, data: fm.data, path };
 }
 
 /** `<dir>/<name>/SKILL.md` for each direct sub-folder that has one (symlinks followed). */

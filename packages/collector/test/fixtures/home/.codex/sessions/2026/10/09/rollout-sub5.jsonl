@@ -1,0 +1,2 @@
+{"timestamp":"2026-10-09T02:00:00.000Z","type":"session_meta","payload":{"id":"sub-5","source":{"subagent":{"thread_spawn":{"parent_thread_id":"main-1","depth":2,"agent_path":"/root/d","agent_nickname":"Ada","agent_role":"reviewer"}}}}}
+{"timestamp":"2026-10-09T02:00:01.000Z","type":"event_msg","payload":{"type":"item_completed","thread_id":"sub-5","item":{"type":"SubAgentActivity","id":"s1","kind":"started"}}}

@@ -1,0 +1,6 @@
+{"timestamp":"2026-10-09T04:00:00.000Z","type":"session_meta","payload":{"id":"exec-1","source":"exec","originator":"codex_exec"}}
+{"timestamp":"2026-10-09T04:00:01.000Z","type":"turn_context","payload":{"turn_id":"E0","model":"gpt-exec-model","effort":"low"}}
+{"timestamp":"2026-10-09T04:00:01.000Z","type":"turn_context","payload":{"turn_id":"E1","model":"gpt-exec-model","effort":"low"}}
+{"timestamp":"2026-10-09T04:00:01.000Z","type":"turn_context","payload":{"turn_id":"E2","model":"gpt-exec-model","effort":"low"}}
+{"timestamp":"2026-10-09T04:00:01.000Z","type":"turn_context","payload":{"turn_id":"E3","model":"gpt-exec-model","effort":"low"}}
+{"timestamp":"2026-10-09T04:00:01.000Z","type":"turn_context","payload":{"turn_id":"E4","model":"gpt-exec-model","effort":"low"}}

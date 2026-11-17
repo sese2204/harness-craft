@@ -1,0 +1,4 @@
+description = "Ignored: the role table's description wins"
+model = "gpt-5.5-luna"
+model_reasoning_effort = "medium"
+developer_instructions = "LEAK-CODEX-ROLE-INSTRUCTIONS"

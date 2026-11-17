@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { hookKey, listEntries, mcpIcon, toSheet } from '../src/index.js';
+import { hookKey, listEntries, mcpIcon, partyClass, toSheet } from '../src/index.js';
+import { mergeProfile } from '../src/merge.js';
 import { agent, claudeSource, codexSource, hook, mcp, profile, skill, visibility } from './helpers.js';
 
 const rich = () =>
@@ -93,6 +94,45 @@ test('role badge is capped at 12 characters and unknown models are 전사', () =
   const m = toSheet(p, visibility()).party.members[0];
   assert.equal(m?.role, 'UNDERSTAND-A');
   assert.equal(m?.cls, '전사');
+});
+
+test('Claude and Codex agents with the same name merge: uses summed, first description and model kept', () => {
+  const p = profile({
+    claudeCode: claudeSource({ agents: [agent('reviewer', 3, { description: '', model: null }), agent('Explore', 2, { source: 'builtin', description: '', model: null })] }),
+    codex: codexSource({
+      agents: [
+        agent('reviewer', 4, { description: 'Codex 리뷰어', model: 'gpt-5.5-luna' }),
+        agent('default', 5, { source: 'builtin', description: '', model: null }),
+      ],
+    }),
+  });
+  assert.deepEqual(mergeProfile(p).agents, [
+    { name: 'Explore', uses: 2, desc: '', model: null, origins: ['claude'] },
+    { name: 'default', uses: 5, desc: '', model: null, origins: ['codex'] },
+    { name: 'reviewer', uses: 7, desc: 'Codex 리뷰어', model: 'gpt-5.5-luna', origins: ['claude', 'codex'] },
+  ]);
+  const party = toSheet(p, visibility()).party;
+  assert.equal(party.total, 3);
+  assert.deepEqual(party.members.map((m) => [m.name, m.uses, m.cls]), [['reviewer', 7, '궁수'], ['default', 5, '전사'], ['Explore', 2, '전사']]);
+});
+
+test('a profile without codex.agents (older file) still renders Claude agents', () => {
+  const codex = codexSource();
+  delete codex.agents;
+  const p = profile({ claudeCode: claudeSource({ agents: [agent('a', 1)] }), codex });
+  assert.deepEqual(toSheet(p, visibility()).party.members.map((m) => m.name), ['a']);
+});
+
+test('party class covers Codex model families; Claude families are checked first', () => {
+  assert.equal(partyClass('gpt-5.5-luna'), '궁수');
+  assert.equal(partyClass('gpt-5.5-sol'), '마법사');
+  assert.equal(partyClass('gpt-5.5-astra'), '도적');
+  for (const model of ['gpt-5.5', 'gpt-5.3-codex', 'o3', 'o4-mini', 'codex-mini-latest']) assert.equal(partyClass(model), '전사', model);
+  assert.equal(partyClass('claude-opus-5-5'), '마법사');
+  // Codex family names must be a whole segment.
+  for (const model of ['console-model', 'gpt-solid', 'lunatic-1', 'astral']) assert.equal(partyClass(model), '전사', model);
+  assert.equal(partyClass('gpt_sol.v2'), '마법사');
+  assert.equal(partyClass(null), '전사');
 });
 
 test('passives: priority events first, non-inline label or default name, handler count', () => {

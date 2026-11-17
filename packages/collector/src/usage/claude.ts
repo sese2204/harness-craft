@@ -21,6 +21,7 @@ export type ClaudeTranscriptScan = {
   skillCalls: Map<string, number>; // Skill tool input.skill -> calls
   slashCalls: Map<string, number>; // <command-name>/x</command-name> -> count
   agentCalls: Map<string, number>; // Agent/Task input.subagent_type -> calls
+  days: Set<string>;               // YYYY-MM-DD; for the cross-tool union only, never written to the profile
 };
 
 type Accumulator = {
@@ -137,5 +138,6 @@ export async function scanClaudeTranscripts(
     skillCalls: acc.skillCalls,
     slashCalls: acc.slashCalls,
     agentCalls: acc.agentCalls,
+    days: acc.days,
   };
 }

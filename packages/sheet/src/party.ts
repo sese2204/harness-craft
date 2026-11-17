@@ -11,11 +11,20 @@ const ROLE_MAX_LENGTH = 12;
 const MODEL_PREFIXES = ['opus-', 'sonnet-', 'haiku-'];
 const INLINE_LABEL = 'inline';
 
-const CLASS_BY_MODEL: ReadonlyArray<readonly [string, PartyClass]> = [
-  ['opus', '마법사'],
-  ['sonnet', '궁수'],
-  ['haiku', '도적'],
-  ['fable', '현자'],
+/** Whole name segment between `-`, `_`, `.` or the ends, so `console-x` is not `sol`. */
+const token = (word: string): RegExp => new RegExp(`(^|[-_.])${word}([-_.]|$)`);
+
+/** First match wins, so Claude families (plain substrings) are checked before the Codex ones (whole segments). */
+const CLASS_BY_MODEL: ReadonlyArray<readonly [RegExp, PartyClass]> = [
+  [/opus/, '마법사'],
+  [/sonnet/, '궁수'],
+  [/haiku/, '도적'],
+  [/fable/, '현자'],
+  // Codex (GPT) families. Plain gpt / codex / o3 / o4 models stay 전사, the same as no match.
+  [token('luna'), '궁수'],
+  [token('sol'), '마법사'],
+  [token('astra'), '도적'],
+  [/gpt|codex|o3|o4/, '전사'],
 ];
 
 /** Badge color per class (design: 마법사 purple, 궁수 green, 전사 pink, 사제/현자 gold). */
@@ -49,7 +58,7 @@ export function roleBadge(name: string): string {
 
 export function partyClass(model: string | null): PartyClass {
   const lower = (model ?? '').toLowerCase();
-  return CLASS_BY_MODEL.find(([key]) => lower.includes(key))?.[1] ?? '전사';
+  return CLASS_BY_MODEL.find(([pattern]) => pattern.test(lower))?.[1] ?? '전사';
 }
 
 export function buildParty(agents: readonly MergedAgent[], showDescriptions: boolean): PartyMember[] {

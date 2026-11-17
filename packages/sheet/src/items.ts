@@ -59,11 +59,11 @@ export function buildEquipment(mcp: readonly MergedMcp[], showDescriptions: bool
   });
 }
 
-/** `직접 제작` when any merged source is the user's own, otherwise the first plugin's name. */
+/** `직접 제작` when any merged source is the user's own, otherwise the first plugin's name, otherwise `기본 제공`. */
 export function acquiredLabel(sources: readonly Source[]): string {
   if (sources.length === 0 || sources.includes('user')) return '직접 제작';
-  const plugin = (sources[0] as string).slice('plugin:'.length);
-  return `플러그인 ${plugin}`;
+  const plugin = sources.find((s) => s.startsWith('plugin:'));
+  return plugin === undefined ? '기본 제공' : `플러그인 ${plugin.slice('plugin:'.length)}`;
 }
 
 export function buildInventory(skills: readonly MergedSkill[], showDescriptions: boolean): SkillCard[] {

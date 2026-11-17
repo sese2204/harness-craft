@@ -3,7 +3,7 @@
 내 Claude Code·Codex 하네스(MCP·스킬·훅·서브에이전트)와 사용 기록을 픽셀 RPG 캐릭터 시트로 만든다.
 
 ```bash
-npx harness-craft share --handle <내-아이디>
+npx harness-craft share --name <닉네임>
 # → ./harness-sheet.html  (혼자 열리는 HTML 한 장. 이 파일만 보내면 된다)
 ```
 

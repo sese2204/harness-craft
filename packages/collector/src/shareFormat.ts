@@ -11,8 +11,24 @@ export const SHARE_PLACEHOLDER = '__HARNESS_SHARE_DATA__';
 export const SHARE_TEMPLATE_FILE = 'share-template.html';
 
 export const DEFAULT_SHARE_HANDLE = 'player';
-/** GitHub login shape: letters, digits, `_`, `.`, `-`, up to 39 characters. */
-export const SHARE_HANDLE_PATTERN = /^[A-Za-z0-9_.-]{1,39}$/;
+/** Display name only (nothing is verified or sent), counted in code points so Korean and emoji count as one each. */
+export const SHARE_NAME_MAX_LENGTH = 32;
+// C0 controls and DEL. Other text (Korean, emoji, `<`) is fine: the CLI escapes the JSON before it goes into HTML.
+const CONTROL_CHARS = /[\u0000-\u001f\u007f]/;
+
+export type ShareNameResult = { ok: true; name: string } | { ok: false; error: string };
+
+/** Trims and drops leading `@`. Empty → DEFAULT_SHARE_HANDLE. Control characters or more than 32 characters → error. */
+export function validateShareName(raw: string): ShareNameResult {
+  const name = raw.trim().replace(/^@+/, '').trim();
+  if (name === '') return { ok: true, name: DEFAULT_SHARE_HANDLE };
+  if (CONTROL_CHARS.test(name)) return { ok: false, error: '제어 문자(줄바꿈·탭 등)는 쓸 수 없습니다' };
+  const length = [...name].length;
+  if (length > SHARE_NAME_MAX_LENGTH) {
+    return { ok: false, error: `${SHARE_NAME_MAX_LENGTH}자까지 쓸 수 있습니다 (지금 ${length}자)` };
+  }
+  return { ok: true, name };
+}
 
 export interface ShareData {
   handle: string;

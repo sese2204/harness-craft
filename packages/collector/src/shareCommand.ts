@@ -39,7 +39,7 @@ export function formatShareSummary(result: ShareResult, descriptions: boolean): 
   const x = result.profile.codex;
   const mcp = (c?.mcpServers.length ?? 0) + (x?.mcpServers.length ?? 0);
   const skills = (c?.skills.length ?? 0) + (x?.skills.length ?? 0);
-  const agents = c?.agents.length ?? 0;
+  const agents = (c?.agents.length ?? 0) + (x?.agents?.length ?? 0);
   const hooks = (c?.hooks.length ?? 0) + (x?.hooks.length ?? 0);
   const lines = [
     `저장: ${result.out} (${formatSize(result.bytes)})`,

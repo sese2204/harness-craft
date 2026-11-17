@@ -1,0 +1,1 @@
+{"hooks":{"PostToolUse":[{"hooks":[{"type":"command","command":"node ./scripts/kit-hook.js LEAK-PLUGIN-HOOK"}]}]}}
