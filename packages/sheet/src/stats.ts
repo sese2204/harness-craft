@@ -8,27 +8,31 @@ const HOOK_HANDLER_WEIGHT = 20;
 const SKILL_COUNT_WEIGHT = 10;
 const EXP_PER_LEVEL_UNIT = 25;
 const EXECUTION_TOOLS = ['Bash', 'Read', 'Edit', 'Write', 'Grep', 'Glob'];
+/** Pi's shell and file tools: the same idea as EXECUTION_TOOLS (`find` is Pi's glob, `powershell` its Windows shell). */
+const PI_EXECUTION_TOOLS = ['bash', 'powershell', 'read', 'edit', 'write', 'grep', 'find'];
 
 interface AxisDef {
   key: StatKey;
   name: string;
-  cap: number;
+  /** Raw value that scores 50. 75 needs 3×, 90 needs 9×, 99 needs 99× — each point gets harder. */
+  half: number;
   title: string;
 }
 
 /** Axis order is also the tie-break order for the title. */
 export const STAT_AXES: readonly AxisDef[] = [
-  { key: 'automation', name: '자동화', cap: 2_000, title: '자동화 장인' },
-  { key: 'guidance', name: '지침력', cap: 1_500, title: '규칙 설계자' },
-  { key: 'command', name: '에이전트 지휘', cap: 2_000, title: '파티 지휘관' },
-  { key: 'tooling', name: '도구 활용', cap: 10_000, title: '장비 수집가' },
-  { key: 'execution', name: '실행력', cap: 50_000, title: '터미널 전사' },
-  { key: 'consistency', name: '꾸준함', cap: 120, title: '성실한 모험가' },
+  { key: 'automation', name: '자동화', half: 300, title: '자동화 장인' },
+  { key: 'guidance', name: '지침력', half: 300, title: '규칙 설계자' },
+  { key: 'command', name: '에이전트 지휘', half: 300, title: '파티 지휘관' },
+  { key: 'tooling', name: '도구 활용', half: 500, title: '장비 수집가' },
+  { key: 'execution', name: '실행력', half: 10_000, title: '터미널 전사' },
+  { key: 'consistency', name: '꾸준함', half: 30, title: '성실한 모험가' },
 ];
 
-export function score(x: number, cap: number): number {
+/** 100·x/(x+half): never saturates, so heavy users still differ. */
+export function score(x: number, half: number): number {
   if (!(x > 0)) return 0;
-  return Math.round(100 * Math.min(1, Math.log10(1 + x) / Math.log10(1 + cap)));
+  return Math.round((100 * x) / (x + half));
 }
 
 const sum = (values: readonly number[]): number => values.reduce((a, b) => a + b, 0);
@@ -36,22 +40,27 @@ const sum = (values: readonly number[]): number => values.reduce((a, b) => a + b
 export function statInputs(profile: HarnessProfile, merged: MergedHarness): Record<StatKey, number> {
   const claude = profile.claudeCode;
   const codex = profile.codex;
+  const pi = profile.pi ?? null;
   const cu = claude?.usage ?? null;
   const xu = codex?.usage ?? null;
+  const pu = pi?.usage ?? null;
   const builtin = cu?.builtinTools ?? {};
+  const piBuiltin = pu?.builtinTools ?? {};
   return {
     automation: merged.hooks.length * HOOK_HANDLER_WEIGHT + sum(merged.skills.map((s) => s.uses)),
-    guidance: (claude?.instructions.lines ?? 0) + (codex?.instructions.lines ?? 0) + merged.skills.length * SKILL_COUNT_WEIGHT,
-    command: sum(merged.agents.map((a) => a.uses)) + (cu?.subagentRuns ?? 0) + (xu?.subagentActivities ?? 0),
+    guidance:
+      (claude?.instructions.lines ?? 0) + (codex?.instructions.lines ?? 0) + (pi?.instructions.lines ?? 0) + merged.skills.length * SKILL_COUNT_WEIGHT,
+    command: sum(merged.agents.map((a) => a.uses)) + (cu?.subagentRuns ?? 0) + (xu?.subagentActivities ?? 0) + (pu?.subagentRuns ?? 0),
     tooling: sum(merged.mcp.map((m) => m.calls)),
-    execution: sum(EXECUTION_TOOLS.map((t) => builtin[t] ?? 0)) + (xu?.commandExecutions ?? 0),
-    // Union of days across both tools; files written before `activity` existed fall back to the larger of the two.
-    consistency: profile.activity?.activeDays ?? Math.max(cu?.activeDays ?? 0, xu?.activeDays ?? 0),
+    execution:
+      sum(EXECUTION_TOOLS.map((t) => builtin[t] ?? 0)) + (xu?.commandExecutions ?? 0) + sum(PI_EXECUTION_TOOLS.map((t) => piBuiltin[t] ?? 0)),
+    // Union of days across all tools; files written before `activity` existed fall back to the largest of them.
+    consistency: profile.activity?.activeDays ?? Math.max(cu?.activeDays ?? 0, xu?.activeDays ?? 0, pu?.activeDays ?? 0),
   };
 }
 
 export function buildStats(inputs: Readonly<Record<StatKey, number>>): Stat[] {
-  return STAT_AXES.map(({ key, name, cap }) => ({ key, name, value: score(inputs[key], cap), raw: inputs[key] }));
+  return STAT_AXES.map(({ key, name, half }) => ({ key, name, value: score(inputs[key], half), raw: inputs[key] }));
 }
 
 /** Highest stat wins; ties go to the earlier axis. */
@@ -68,7 +77,8 @@ export function experience(profile: HarnessProfile): number {
   return (
     (profile.claudeCode?.usage?.toolCalls ?? 0) +
     (profile.codex?.usage?.commandExecutions ?? 0) +
-    (profile.codex?.usage?.mcpCalls ?? 0)
+    (profile.codex?.usage?.mcpCalls ?? 0) +
+    (profile.pi?.usage?.toolCalls ?? 0)
   );
 }
 

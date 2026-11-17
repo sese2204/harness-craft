@@ -1,4 +1,4 @@
-import { cp, mkdtemp, mkdir, readdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, mkdir, readdir, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -43,15 +43,24 @@ async function fillPlaceholders(dir: string, home: string): Promise<void> {
   }
 }
 
+/** Where the fixture keeps Pi's npm installs; `node_modules/` is gitignored, so makeHome renames it into place. */
+const PI_NPM_FIXTURE_DIR = 'modules';
+
+export type FixtureOptions = { codex?: boolean; pi?: boolean };
+
 /**
  * Copies the fixture home to a temp dir, fills token placeholders, symlinks ~/.claude/skills -> ../harness/skills and writes
- * installed_plugins.json with the absolute install path (which cannot be static).
+ * installed_plugins.json with the absolute install path (which cannot be static). ~/.pi is opt-in (`pi: true`) so the
+ * Claude/Codex expectations stay as they were before Pi was collected.
  */
-export async function makeHome(options: { codex?: boolean } = {}): Promise<{ home: string; cleanup: () => Promise<void> }> {
+export async function makeHome(options: FixtureOptions = {}): Promise<{ home: string; cleanup: () => Promise<void> }> {
   const home = await mkdtemp(join(tmpdir(), 'harness-craft-test-'));
   await cp(FIXTURE_HOME, home, { recursive: true });
   await fillPlaceholders(home, home);
   if (options.codex === false) await rm(join(home, '.codex'), { recursive: true, force: true });
+  const piNpm = join(home, '.pi', 'agent', 'npm');
+  if (options.pi === true) await rename(join(piNpm, PI_NPM_FIXTURE_DIR), join(piNpm, 'node_modules'));
+  else await rm(join(home, '.pi'), { recursive: true, force: true });
   await symlink(join('..', 'harness', 'skills'), join(home, '.claude', 'skills'));
   const installPath = join(home, '.claude', 'plugins', 'cache', 'market', 'myplug', '1.0.0');
   await mkdir(join(home, '.claude', 'plugins'), { recursive: true });
@@ -68,7 +77,7 @@ export async function makeHome(options: { codex?: boolean } = {}): Promise<{ hom
   return { home, cleanup: () => rm(home, { recursive: true, force: true }) };
 }
 
-export async function scanFixture(options: { codex?: boolean; usage?: boolean } = {}): Promise<{ profile: HarnessProfile; home: string }> {
+export async function scanFixture(options: FixtureOptions & { usage?: boolean } = {}): Promise<{ profile: HarnessProfile; home: string }> {
   const { home, cleanup } = await makeHome(options);
   try {
     const profile = await collectProfile({ home, usage: options.usage ?? true, now: FIXED_NOW });

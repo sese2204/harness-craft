@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "dev-radius": { "command": "npx", "args": ["-y", "@fixture/radius-mcp", "--token", "LEAK-PI-ARG"], "env": { "TOKEN": "LEAK-PI-ENV" } },
+    "docs": { "url": "https://LEAK-docs.internal/mcp", "headers": { "Authorization": "Bearer LEAK-PI-HEADER" }, "description": "LEAK-PI-MCP-DESC" },
+    "github": { "url": "https://api.githubcopilot.com/mcp/", "exposure": "deferred" },
+    "off-server": { "command": "uvx", "args": ["off-mcp"], "enabled": false }
+  }
+}

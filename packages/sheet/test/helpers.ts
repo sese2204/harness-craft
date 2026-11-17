@@ -1,4 +1,4 @@
-import type { Agent, ClaudeCodeSource, CodexSource, HarnessProfile, Hook, McpServer, Skill } from '@harness-craft/schema';
+import type { Agent, ClaudeCodeSource, CodexSource, HarnessProfile, Hook, McpServer, PiSource, Skill } from '@harness-craft/schema';
 
 import { DEFAULT_VISIBILITY, type Visibility } from '../src/index.js';
 
@@ -34,6 +34,18 @@ export function codexSource(extra: Partial<CodexSource> = {}): CodexSource {
     instructions: { present: false, lines: 0, bytes: 0 }, rulesFiles: 0,
     usage: {
       sessions: 0, mcpCalls: 0, subagentActivities: 0, commandExecutions: 0,
+      firstActivity: null, lastActivity: null, activeDays: 0,
+    },
+    ...extra,
+  };
+}
+
+export function piSource(extra: Partial<PiSource> = {}): PiSource {
+  return {
+    model: null, mcpServers: [], skills: [], plugins: [], commands: [],
+    instructions: { present: false, lines: 0, bytes: 0 },
+    usage: {
+      sessions: 0, toolCalls: 0, builtinTools: {}, mcpCalls: 0, subagentRuns: 0,
       firstActivity: null, lastActivity: null, activeDays: 0,
     },
     ...extra,

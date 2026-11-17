@@ -1,0 +1,14 @@
+{
+  "defaultProvider": "anthropic",
+  "defaultModel": "claude-fixture-default",
+  "defaultThinkingLevel": "high",
+  "httpProxy": "http://LEAK-proxy-user:LEAK-proxy-pass@proxy.internal:3128",
+  "packages": [
+    "npm:@fixture/pi-tools@1.2.0",
+    { "source": "git:github.com/fixture/pi-kit@v1", "prompts": [] },
+    "./local-pack",
+    "npm:@fixture/not-installed"
+  ],
+  "extensions": ["builtin:codemode", "-builtin:llama.cpp", "~/pi-ext/guard.ts"],
+  "skills": ["~/pi-extra-skills", "-skills/offpi"]
+}

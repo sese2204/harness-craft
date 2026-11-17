@@ -6,6 +6,7 @@ export type ParseResult = { ok: true; profile: HarnessProfile } | { ok: false; e
 const MAX_ERRORS = 8;
 
 type Rec = Record<string, unknown>;
+type Kind = 'claude' | 'codex' | 'pi';
 type Check = (value: unknown) => boolean;
 
 const isRecord = (v: unknown): v is Rec => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -24,6 +25,12 @@ const CLAUDE_USAGE_FIELDS: Readonly<Record<string, Check>> = {
 };
 const CODEX_USAGE_FIELDS: Readonly<Record<string, Check>> = {
   mcpCalls: isCount, subagentActivities: isCount, commandExecutions: isCount, activeDays: isCount,
+};
+const PI_USAGE_FIELDS: Readonly<Record<string, Check>> = {
+  toolCalls: isCount, mcpCalls: isCount, subagentRuns: isCount, activeDays: isCount, builtinTools: isRecord,
+};
+const USAGE_FIELDS: Readonly<Record<Kind, Readonly<Record<string, Check>>>> = {
+  claude: CLAUDE_USAGE_FIELDS, codex: CODEX_USAGE_FIELDS, pi: PI_USAGE_FIELDS,
 };
 const ACTIVITY_FIELDS: Readonly<Record<string, Check>> = {
   activeDays: isCount, firstActivity: isStringOrNull, lastActivity: isStringOrNull,
@@ -48,7 +55,7 @@ function checkList(source: Rec, key: string, fields: Readonly<Record<string, Che
   list.forEach((item, i) => checkFields(item, fields, `${path}.${key}[${i}]`, errors));
 }
 
-function checkSource(value: unknown, path: string, kind: 'claude' | 'codex', errors: string[]): void {
+function checkSource(value: unknown, path: string, kind: Kind, errors: string[]): void {
   if (value === null) return;
   if (!isRecord(value)) {
     errors.push(`${path} 는 객체 또는 null 이어야 합니다`);
@@ -56,12 +63,13 @@ function checkSource(value: unknown, path: string, kind: 'claude' | 'codex', err
   }
   checkList(value, 'mcpServers', MCP_FIELDS, path, errors);
   checkList(value, 'skills', SKILL_FIELDS, path, errors);
-  checkList(value, 'hooks', HOOK_FIELDS, path, errors);
+  // Pi has no hooks and no agents.
+  if (kind !== 'pi') checkList(value, 'hooks', HOOK_FIELDS, path, errors);
   // codex.agents is optional: profiles written before Codex agents were collected do not have it.
   if (kind === 'claude' || value.agents !== undefined) checkList(value, 'agents', AGENT_FIELDS, path, errors);
   checkFields(value.instructions, { lines: isCount }, `${path}.instructions`, errors);
   if (value.usage !== null) {
-    checkFields(value.usage, kind === 'claude' ? CLAUDE_USAGE_FIELDS : CODEX_USAGE_FIELDS, `${path}.usage`, errors);
+    checkFields(value.usage, USAGE_FIELDS[kind], `${path}.usage`, errors);
   }
   // usage.models is optional (added after schema v1 shipped): model id -> count.
   if (isRecord(value.usage) && value.usage.models !== undefined) {
@@ -72,7 +80,7 @@ function checkSource(value: unknown, path: string, kind: 'claude' | 'codex', err
       }
     }
   }
-  if (kind === 'claude' && isRecord(value.usage) && isRecord(value.usage.builtinTools)) {
+  if (kind !== 'codex' && isRecord(value.usage) && isRecord(value.usage.builtinTools)) {
     for (const [tool, n] of Object.entries(value.usage.builtinTools)) {
       if (!isCount(n)) errors.push(`${path}.usage.builtinTools.${tool} 값이 올바르지 않습니다`);
     }
@@ -92,6 +100,8 @@ export function parseProfile(input: unknown): ParseResult {
     if (key in input) checkSource(input[key], key, kind, errors);
     else errors.push(`${key} 키가 없습니다`);
   }
+  // Optional for older files (written before Pi was collected); null when the Pi agent dir was not found.
+  if (input.pi !== undefined) checkSource(input.pi, 'pi', 'pi', errors);
   // Optional for older files; null when no usage scan ran.
   if (input.activity !== undefined && input.activity !== null) checkFields(input.activity, ACTIVITY_FIELDS, 'activity', errors);
   if (errors.length > 0) {

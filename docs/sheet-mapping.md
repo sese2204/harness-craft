@@ -8,8 +8,10 @@
 
 ## 합치기
 
-Claude Code 와 Codex 를 한 캐릭터로 합친다. MCP 는 이름이 같으면 하나로 합치고 `calls` 를 더한다.
-스킬·에이전트는 `source` 가 달라도 이름이 같으면 합치고 `uses` 를 더한다. 어느 도구에서 왔는지는 `origins: ('claude'|'codex')[]` 로 남긴다.
+Claude Code, Codex, Pi 를 한 캐릭터로 합친다. MCP 는 이름이 같으면 하나로 합치고 `calls` 를 더한다(Pi MCP 의 `calls` 는 직접 호출과
+codemode 안 호출을 합친 것). 스킬·에이전트는 `source` 가 달라도 이름이 같으면 합치고 `uses` 를 더한다. 어느 도구에서 왔는지는
+`origins: ('claude'|'codex'|'pi')[]` 로 이 순서대로 남긴다. 설명은 먼저 나온 빈 문자열이 아닌 것(Claude Code → Codex → Pi 순).
+`pi` 키가 없는 예전 파일은 Pi 가 없는 것으로 본다. Pi 에는 에이전트·훅이 없어 파티·패시브에는 들어가지 않는다.
 에이전트는 `claudeCode.agents` 와 `codex.agents`(예전 파일에는 없을 수 있음)를 합친다. 설명은 먼저 나온 빈 문자열이 아닌 것,
 모델은 먼저 나온 null 이 아닌 것을 쓴다(Claude Code 쪽이 먼저). 기본 에이전트(`source: 'builtin'`)도 같은 규칙으로 합친다.
 
@@ -65,23 +67,31 @@ SessionStart 출정 준비 · SessionEnd 귀환 기록 · UserPromptSubmit 명�
 
 ### 스탯 6축 (0~100)
 
-`score(x, cap) = round(100 × min(1, log10(1 + x) / log10(1 + cap)))`
+`score(x, half) = round(100 × x / (x + half))`
 
-| 축 | x | cap | 칭호 |
+`half` 는 50점이 되는 원점수다. 75점은 3배, 90점은 9배, 99점은 99배가 필요하고 100점은 199배를 넘어야 반올림으로 찍힌다.
+점수가 높을수록 1점 올리기가 어려워지고, 많이 쓰는 사람끼리도 차이가 남는다. (예전 공식은 cap 에서 100 으로 막혀 헤비 유저가
+모두 81~100점에 몰렸다.) `half` 는 보통 사용자가 50점 근처가 되도록 잡고, 실제 분포를 보며 조정한다.
+
+| 축 | x | half(50점) | 칭호 |
 |---|---|---|---|
-| 자동화 | 훅 핸들러 수 × 20 + 스킬 uses 합 | 2,000 | 자동화 장인 |
-| 지침력 | CLAUDE.md 줄 + AGENTS.md 줄 + 스킬 수 × 10 | 1,500 | 규칙 설계자 |
-| 에이전트 지휘 | 에이전트 uses 합(Claude Code + Codex) + subagentRuns + Codex subagentActivities(서브에이전트를 띄운 횟수) | 2,000 | 파티 지휘관 |
-| 도구 활용 | MCP calls 합 | 10,000 | 장비 수집가 |
-| 실행력 | builtinTools 의 Bash + Read + Edit + Write + Grep + Glob + Codex commandExecutions | 50,000 | 터미널 전사 |
-| 꾸준함 | `activity.activeDays`(두 도구 활동일의 합집합, 같은 날은 하루). `activity` 가 없거나 null 이면 Claude activeDays 와 Codex activeDays 중 큰 값 | 120 | 성실한 모험가 |
+| 자동화 | 훅 핸들러 수 × 20 + 스킬 uses 합 | 300 | 자동화 장인 |
+| 지침력 | CLAUDE.md 줄 + Codex AGENTS.md 줄 + Pi AGENTS.md 줄 + 스킬 수 × 10 | 300 | 규칙 설계자 |
+| 에이전트 지휘 | 에이전트 uses 합(Claude Code + Codex) + subagentRuns + Codex subagentActivities(서브에이전트를 띄운 횟수) + Pi subagentRuns(subagent 도구가 띄운 에이전트 수) | 300 | 파티 지휘관 |
+| 도구 활용 | MCP calls 합(세 도구 합친 MCP 의 calls) | 500 | 장비 수집가 |
+| 실행력 | builtinTools 의 Bash + Read + Edit + Write + Grep + Glob + Codex commandExecutions + Pi builtinTools 의 bash + powershell + read + edit + write + grep + find | 10,000 | 터미널 전사 |
+| 꾸준함 | `activity.activeDays`(모든 도구 활동일의 합집합, 같은 날은 하루). `activity` 가 없거나 null 이면 Claude·Codex·Pi activeDays 중 가장 큰 값 | 30 | 성실한 모험가 |
+
+Pi 의 `find` 는 Claude Code 의 Glob 과 같은 일이라 넣고, `ls`·`codemode`·`tool_search` 는 넣지 않는다(Claude Code 쪽도 LS 는 뺀다).
 
 설계안의 「프롬프트력·디버깅·문서화」는 수집 데이터로 잴 수 없어서 「지침력·실행력·꾸준함」으로 바꿨다.
 usage 가 없으면(`--no-usage`) 사용 기반 축은 0 이다.
 
 ### 레벨
 
-`exp = Claude toolCalls + Codex commandExecutions + Codex mcpCalls`
+`exp = Claude toolCalls + Codex commandExecutions + Codex mcpCalls + Pi toolCalls`
+
+Pi toolCalls 에는 codemode 스크립트 안에서 부른 도구도 들어 있다(codemode 호출 자체도 1회).
 `level = floor(sqrt(exp / 25))`, 다음 레벨까지 진행률 = `(exp − 25·L²) / (25·((L+1)² − L²))`.
 EXP 표시는 `EXP {exp − 25·L²} / {25·((L+1)² − L²)}`.
 
@@ -89,10 +99,10 @@ EXP 표시는 `EXP {exp − 25·L²} / {25·((L+1)² − L²)}`.
 
 맨몸 위에 직업 옷, 등급별 장비, 레벨 구간 표시를 겹쳐 그린다(`packages/sheet-ui/src/hero.tsx`, 계산은 `packages/sheet/src/hero.ts`).
 
-**직업.** 활동일이 더 많은 도구(동률이면 Claude Code)를 주 도구로 보고(Codex 는 `codex exec` 를 뺀 대화형 세션이 있던 날 `usage.interactiveDays`), 그 도구에서 가장 많이 쓴 모델로 정한다.
-모델 사용 횟수는 `usage.models`(Claude 는 응답 메시지 수, Codex 는 대화형 세션 턴 수)이고, 없으면 설정 파일의 모델을 쓴다.
+**직업.** Claude Code·Codex·Pi 중 활동일이 가장 많은 도구(동률이면 Claude Code, 그다음 Codex, 그다음 Pi)를 주 도구로 보고(Codex 는 `codex exec` 를 뺀 대화형 세션이 있던 날 `usage.interactiveDays`), 그 도구에서 가장 많이 쓴 모델로 정한다.
+모델 사용 횟수는 `usage.models`(Claude·Pi 는 응답 메시지 수, Codex 는 대화형 세션 턴 수)이고, 없으면 설정 파일의 모델을 쓴다.
 모델 → 직업 규칙은 파티원과 같다(opus·sol 마법사, sonnet·luna 궁수, haiku·astra 도적, fable 현자, 그 밖 전사).
-다른 도구의 활동일이 주 도구의 25% 이상이고 직업이 다르면 그 직업을 보조 직업으로 두고, 그 직업 색의 띠를 어깨에 두른다.
+나머지 도구 중 활동일이 가장 많은 도구(동률이면 같은 순서)의 활동일이 주 도구의 25% 이상이고 직업이 다르면 그 직업을 보조 직업으로 두고, 그 직업 색의 띠를 어깨에 두른다.
 
 **레벨 구간.**
 

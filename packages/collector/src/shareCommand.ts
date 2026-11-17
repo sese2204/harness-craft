@@ -33,12 +33,13 @@ function formatSize(bytes: number): string {
   return bytes < 1024 ? `${bytes}B` : `${(bytes / 1024).toFixed(1)}KB`;
 }
 
-/** Human-readable summary for stderr. Counts add up both sources, as in the file. */
+/** Human-readable summary for stderr. Counts add up all sources, as in the file. Pi has no agents or hooks. */
 export function formatShareSummary(result: ShareResult, descriptions: boolean): string {
   const c = result.profile.claudeCode;
   const x = result.profile.codex;
-  const mcp = (c?.mcpServers.length ?? 0) + (x?.mcpServers.length ?? 0);
-  const skills = (c?.skills.length ?? 0) + (x?.skills.length ?? 0);
+  const p = result.profile.pi;
+  const mcp = (c?.mcpServers.length ?? 0) + (x?.mcpServers.length ?? 0) + (p?.mcpServers.length ?? 0);
+  const skills = (c?.skills.length ?? 0) + (x?.skills.length ?? 0) + (p?.skills.length ?? 0);
   const agents = (c?.agents.length ?? 0) + (x?.agents?.length ?? 0);
   const hooks = (c?.hooks.length ?? 0) + (x?.hooks.length ?? 0);
   const lines = [

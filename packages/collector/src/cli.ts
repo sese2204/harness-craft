@@ -4,7 +4,7 @@ import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 
-import { collectProfile } from './collect.js';
+import { collectProfile, type CollectOptions } from './collect.js';
 import { writeShareSheet, formatShareSummary } from './shareCommand.js';
 import { DEFAULT_SHARE_HANDLE, SHARE_NAME_MAX_LENGTH, validateShareName } from './shareFormat.js';
 import { formatSummary } from './summary.js';
@@ -26,12 +26,14 @@ share — 혼자 열리는 캐릭터 시트 HTML 한 장을 만든다
 
 공통
   --no-usage        대화 기록 집계를 건너뜀 (usage 는 null)
-  --home <dir>      홈 디렉터리 대신 쓸 경로 (테스트·디버그용). 주면 $CODEX_HOME 대신 <dir>/.codex 를 읽음
+  --home <dir>      홈 디렉터리 대신 쓸 경로 (테스트·디버그용). 주면 $CODEX_HOME 대신 <dir>/.codex,
+                    $PI_CODING_AGENT_DIR 대신 <dir>/.pi/agent 를 읽고 $PI_CODING_AGENT_SESSION_DIR 는 무시함
 
 Codex 설정은 $CODEX_HOME (없으면 ~/.codex) 에서 읽는다.
+Pi 설정은 $PI_CODING_AGENT_DIR (없으면 ~/.pi/agent) 에서, 세션은 $PI_CODING_AGENT_SESSION_DIR 가 있으면 거기서도 읽는다.
 `;
 
-type CommonOptions = { usage: boolean; home: string; codexHome: string };
+type CommonOptions = { usage: boolean; home: string; codexHome: string; piAgentDir: string; piSessionDir?: string };
 type ScanOptions = CommonOptions & { command: 'scan'; out: string; json: boolean };
 type ShareCliOptions = CommonOptions & { command: 'share'; out: string; handle: string; hide: string[]; descriptions: boolean };
 type CliOptions = ScanOptions | ShareCliOptions;
@@ -67,7 +69,14 @@ function parseCli(argv: readonly string[]): CliOptions | 'help' {
   const foreign = (command === 'scan' ? SHARE_ONLY : SCAN_ONLY).filter((key) => values[key] !== undefined);
   if (foreign.length > 0) throw new UsageError(`${command} 에는 쓸 수 없는 옵션: ${foreign.map((k) => `--${k}`).join(' ')}`);
   const home = resolve(values.home ?? homedir());
-  const common: CommonOptions = { usage: values['no-usage'] !== true, home, codexHome: codexHomeFor(values.home, home) };
+  const piSessionDir = envDirFor(values.home, 'PI_CODING_AGENT_SESSION_DIR', home);
+  const common: CommonOptions = {
+    usage: values['no-usage'] !== true,
+    home,
+    codexHome: codexHomeFor(values.home, home),
+    piAgentDir: envDirFor(values.home, 'PI_CODING_AGENT_DIR', home) ?? join(home, '.pi', 'agent'),
+    ...(piSessionDir !== undefined ? { piSessionDir } : {}),
+  };
   if (command === 'scan') {
     return { ...common, command, out: resolve(values.out ?? DEFAULT_OUT), json: values.json === true };
   }
@@ -87,6 +96,14 @@ function codexHomeFor(homeFlag: string | undefined, home: string): string {
   return homeFlag === undefined && env !== undefined && env.trim() !== '' ? resolve(env) : join(home, '.codex');
 }
 
+/** A directory from the environment (`~/` expanded, as Pi does), unless --home pins everything under it. */
+function envDirFor(homeFlag: string | undefined, name: string, home: string): string | undefined {
+  const env = process.env[name]?.trim();
+  if (homeFlag !== undefined || env === undefined || env === '') return undefined;
+  if (env === '~') return home;
+  return env.startsWith('~/') ? join(home, env.slice(2)) : resolve(env);
+}
+
 /** --name, or its old alias --handle. Both at once is an error. */
 function shareName(name: string | undefined, alias: string | undefined): string {
   if (name !== undefined && alias !== undefined) throw new UsageError('--name 과 --handle 은 같은 옵션입니다. 하나만 쓰세요.');
@@ -103,8 +120,13 @@ function progressReporter(label: string) {
   };
 }
 
+function collectOptions(options: CommonOptions): CollectOptions {
+  const { home, codexHome, piAgentDir, piSessionDir, usage } = options;
+  return { home, codexHome, piAgentDir, usage, ...(piSessionDir !== undefined ? { piSessionDir } : {}) };
+}
+
 async function runScan(options: ScanOptions): Promise<number> {
-  const profile = await collectProfile({ home: options.home, codexHome: options.codexHome, usage: options.usage, onProgress: progressReporter });
+  const profile = await collectProfile({ ...collectOptions(options), onProgress: progressReporter });
   const json = JSON.stringify(profile, null, 2) + '\n';
   if (options.json) {
     process.stdout.write(json);
@@ -117,7 +139,7 @@ async function runScan(options: ScanOptions): Promise<number> {
 }
 
 async function runShare(options: ShareCliOptions): Promise<number> {
-  const profile = await collectProfile({ home: options.home, codexHome: options.codexHome, usage: options.usage, onProgress: progressReporter });
+  const profile = await collectProfile({ ...collectOptions(options), onProgress: progressReporter });
   const result = await writeShareSheet(profile, options);
   process.stderr.write(formatShareSummary(result, options.descriptions));
   return 0;

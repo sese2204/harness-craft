@@ -1,13 +1,14 @@
 # 수집기(collector) 명세 v1
 
-사용자 PC 의 Claude Code·Codex 설정과 사용 기록을 읽어, 캐릭터 시트가 쓸 `harness-profile.json` 한 파일로 만든다.
+사용자 PC 의 Claude Code·Codex·Pi 설정과 사용 기록을 읽어, 캐릭터 시트가 쓸 `harness-profile.json` 한 파일로 만든다.
 이 버전은 **네트워크를 전혀 쓰지 않는다.** 업로드는 서버가 생긴 뒤 `sync` 명령으로 붙인다.
 
 ## 원칙
 
 1. **내보내는 것은 이름·개수·짧은 설명뿐이다.** 파일 본문, 환경변수 값, 헤더, 명령 인자, 절대 경로는 내보내지 않는다.
 2. **허용 목록 방식으로 고른다.** 원본 객체를 복사한 뒤 지우는 방식이 아니라, 필요한 필드만 골라 새 객체를 만든다.
-3. **읽지 않는 파일:** `~/.codex/auth.json`, `~/.claude/.credentials.json`, `*.sqlite*`, `history.jsonl`, `session-env/`, `shell-snapshots/`.
+3. **읽지 않는 파일:** `~/.codex/auth.json`, `~/.claude/.credentials.json`, `*.sqlite*`, `history.jsonl`, `session-env/`, `shell-snapshots/`,
+   Pi 의 `auth.json`·`mcp-auth.json`·`models.json`(`apiKey` 가 들어 있을 수 있음).
 4. 파일이 없거나 깨져 있으면 그 항목만 비우고 계속 간다. 경고는 `warnings[]` 에 남긴다(경로는 `~` 로 줄여서).
 5. 결과는 결정적이어야 한다. 배열은 이름순(사용량이 있는 배열도 이름순, 정렬은 화면이 한다).
 
@@ -23,10 +24,13 @@ harness-craft [scan] [--out <file>] [--json] [--no-usage] [--home <dir>]
 | `--out <file>` | 저장 위치 변경 |
 | `--json` | JSON 을 stdout 으로만 내보내고 파일은 쓰지 않음. 요약·진행률은 stderr |
 | `--no-usage` | 대화 기록 집계(느린 부분)를 건너뜀. `usage` 는 `null` |
-| `--home <dir>` | 홈 디렉터리 대신 쓸 경로(테스트·디버그용). `~/.claude`, `~/.claude.json`, `~/.codex`, `~/.agents` 를 여기서 찾음. 주면 `$CODEX_HOME` 은 무시 |
+| `--home <dir>` | 홈 디렉터리 대신 쓸 경로(테스트·디버그용). `~/.claude`, `~/.claude.json`, `~/.codex`, `~/.agents`, `~/.pi/agent` 를 여기서 찾음. 주면 `$CODEX_HOME`, `$PI_CODING_AGENT_DIR`, `$PI_CODING_AGENT_SESSION_DIR` 는 무시 |
 
 Codex 경로는 모두 `$CODEX_HOME`(없거나 비면 `~/.codex`) 아래에서 찾는다. 아래 `~/.codex` 는 이 디렉터리를 말한다.
 `~/.agents/skills` 는 `$CODEX_HOME` 이 아니라 홈 디렉터리 아래다. `collectProfile` 은 환경변수를 읽지 않고 CLI 가 넘긴 `codexHome` 을 쓴다.
+
+Pi 경로는 모두 `$PI_CODING_AGENT_DIR`(없거나 비면 `~/.pi/agent`, 앞의 `~/` 는 홈으로 바꿈) 아래에서 찾는다. 아래 `<agent-dir>` 은 이 디렉터리다.
+`$PI_CODING_AGENT_SESSION_DIR` 가 있으면 세션 폴더로 함께 읽는다. CLI 가 둘을 읽어 `piAgentDir`·`piSessionDir` 로 넘긴다.
 
 요약 마지막 줄에 "아무것도 업로드하지 않았습니다" 를 반드시 쓴다.
 
@@ -41,6 +45,7 @@ type HarnessProfile = {
   collector: { name: 'harness-craft'; version: string };
   claudeCode: ClaudeCodeSource | null; // ~/.claude 와 ~/.claude.json 이 둘 다 없으면 null
   codex: CodexSource | null;           // $CODEX_HOME(기본 ~/.codex) 가 없으면 null
+  pi?: PiSource | null;                // <agent-dir>(기본 ~/.pi/agent) 가 없으면 null. 예전 파일에는 키가 없을 수 있다
   activity?: Activity | null;          // 아래 「활동일 합계」. 사용 기록을 하나도 안 읽었으면 null. 예전 파일에는 키가 없을 수 있다
   redactions: { paths: number; emails: number; secrets: number; urls: number };
   warnings: string[];
@@ -74,6 +79,16 @@ type CodexSource = {
   usage: CodexUsage | null;
 };
 
+type PiSource = {
+  model: string | null;                // 세션에서 assistant 메시지가 가장 많은 모델(other 제외), 없으면 settings.json defaultModel
+  mcpServers: McpServer[];             // <agent-dir>/mcp.json mcpServers 중 enabled: false 가 아닌 것
+  skills: Skill[];                     // 아래 「Pi 스킬」
+  plugins: Plugin[];                   // 아래 「Pi 패키지·확장」
+  commands: Command[];                 // <agent-dir>/prompts/*.md (프롬프트 템플릿)
+  instructions: Instructions;          // <agent-dir> 의 AGENTS.override.md, AGENTS.md, AGENTS.MD, CLAUDE.md, CLAUDE.MD 중 처음 있는 파일
+  usage: PiUsage | null;
+};
+
 type McpServer = {
   name: string;
   transport: 'stdio' | 'http' | 'sse' | 'unknown';
@@ -85,7 +100,7 @@ type McpServer = {
 };
 
 type Skill = {
-  name: string;                        // frontmatter name ?? 폴더 이름. 플러그인이면 '<plugin>:<name>'
+  name: string;                        // frontmatter name ?? 폴더 이름. 플러그인이면 '<plugin>:<name>' (Pi 패키지 스킬은 맨 이름)
   description: string;                 // 가림 처리 후 280자 자르기
   source: 'user' | 'builtin' | `plugin:${string}`; // builtin = Codex 시스템 스킬, 쓴 적 있을 때만
   uses: number;                        // 아래 「사용 횟수」
@@ -134,7 +149,17 @@ type CodexUsage = {
   firstActivity: string | null; lastActivity: string | null; activeDays: number;
 };
 
-type Activity = {                      // 두 도구를 합친 활동일. 날짜 목록은 내보내지 않는다
+type PiUsage = {
+  sessions: number;                    // 세션 파일 수 (/fork·/clone 도 새 파일이라 하나씩 센다)
+  toolCalls: number;                   // 모델이 부른 도구 + 도구 안에서 부른 도구(codemode nestedCalls). 포크 사본은 한 번만
+  builtinTools: Record<string, number>;// Pi 내장 도구 이름별: read, bash, powershell, edit, write, grep, find, ls, codemode, tool_search
+  mcpCalls: number;                    // mcp__<server>__<tool> 호출 (직접 + codemode 안)
+  subagentRuns: number;                // subagent 도구가 띄운 에이전트 수 (확장 도구. Pi 에는 내장 서브에이전트가 없다)
+  models?: Record<string, number>;     // 모델 id 별 assistant 메시지 수. 아래 「Pi 사용 기록」
+  firstActivity: string | null; lastActivity: string | null; activeDays: number;
+};
+
+type Activity = {                      // 모든 도구를 합친 활동일. 날짜 목록은 내보내지 않는다
   activeDays: number; firstActivity: string | null; lastActivity: string | null;
 };
 ```
@@ -275,11 +300,82 @@ hostname 은 소문자로 바꾸고 끝의 `.` 을 뗀 뒤 비교한다. 목록�
   없을 때). 사용자 에이전트에도 기본 에이전트에도 없는 role 이름(지운 에이전트일 수 있음)은 버린다.
 - `--no-usage` 면 사용자 에이전트는 `uses: 0` 으로 나오고 기본 에이전트는 나오지 않는다.
 
+### Pi
+
+[Pi](https://github.com/earendil-works/pi)(npm `@earendil-works/pi-coding-agent`) 의 공식 문서와 소스(커밋 4afe78d, 2026-11-17)를 보고
+만든 규칙이다. **실제 Pi 설치본·세션 파일로는 확인하지 못했다.**
+
+- `<agent-dir>` 이 없으면 `pi: null`. 읽는 파일은 `settings.json`, `mcp.json`, `AGENTS.md` 류, `prompts/`, 스킬 폴더, 패키지의 `package.json`,
+  세션 JSONL 뿐이다. `auth.json`, `mcp-auth.json`, `models.json` 은 열지 않는다. 프로젝트 쪽 `.pi/` 는 읽지 않는다.
+- MCP: `mcp.json` 의 `mcpServers`. `buildMcpServer` 로 transport·허용 목록 host·패키지 이름만 고른다(`env`·`headers`·`oauth` 값과
+  인자는 내보내지 않음). `type` 이 없으면 `command` → stdio, `url` → http.
+- 모델: 세션 assistant 메시지의 `message.model` 을 센 것 중 가장 많은 것(동률이면 이름순, `other` 제외). 세션이 없으면
+  `settings.json` 의 `defaultModel`. `defaultProvider`·`defaultThinkingLevel` 은 내보내지 않는다.
+- 지침: `<agent-dir>` 에서 `AGENTS.override.md`, `AGENTS.md`, `AGENTS.MD`, `CLAUDE.md`, `CLAUDE.MD` 순으로 처음 있는 파일 하나(Pi 의
+  `loadContextFileFromDir` 와 같은 순서). 빈 파일이어도 그 파일이 이긴다.
+- 프롬프트 템플릿: `<agent-dir>/prompts/*.md`(바로 아래만) → `commands`. 설명은 frontmatter `description` 만 쓴다(Pi 는 없으면 본문 첫 줄을
+  쓰지만 본문은 읽어 내보내지 않는다). 쓴 횟수는 세션에서 가려낼 수 없어(전개된 본문만 남는다) 세지 않는다.
+  settings·패키지의 `prompts` 경로는 읽지 않는다.
+- 훅·에이전트는 없다. Pi 는 훅 설정 파일이 없고 서브에이전트는 확장(예제 `subagent`)이 `--no-session` 으로 띄운다.
+
+### Pi 스킬
+
+- 읽는 곳(앞에 있을수록 우선. Pi 리소스 로더의 순서): 패키지 스킬 → `settings.json` `skills[]` 의 일반 경로(`<agent-dir>` 기준 상대 경로,
+  `~/`·절대 경로 가능) → `<agent-dir>/skills` → `~/.agents/skills`(Codex 와 같은 폴더).
+- 찾는 법(Pi `collectSkillEntries`): 폴더에 `SKILL.md` 가 있으면 그 파일 하나가 스킬이고 더 들어가지 않는다. 없으면 하위 폴더로 재귀한다
+  (`.` 으로 시작하는 것과 `node_modules` 는 건너뜀). 낱개 `.md` 파일은 `<agent-dir>/skills`·settings·패키지에서는 루트 바로 아래만,
+  `~/.agents/skills` 에서는 루트가 아닌 곳에서만 스킬이다. `.gitignore` 류 무시 규칙은 적용하지 않는다.
+- `description` 이 없으면 Pi 가 싣지 않으므로 뺀다. 이름은 frontmatter `name`, 없으면 파일이 든 폴더 이름. 같은 파일(심볼릭 링크를 따라간
+  실제 경로)은 한 번만, 같은 이름은 앞의 것만 남긴다.
+- **패키지 스킬도 이름에 `<plugin>:` 을 붙이지 않는다.** Pi 는 패키지 스킬도 맨 이름(`/skill:<name>`)으로 부른다. `source` 는 `plugin:<패키지>`.
+- `settings.json` `skills[]` 의 `-경로` 는 그 스킬(파일, 또는 SKILL.md 가 든 폴더)을 뺀다. `!glob` 과 `+경로` 는 적용하지 않는다.
+- `uses`: 스킬 하나당 **턴 하나에 1회**. 턴은 user 메시지 하나부터 다음 user 메시지 전까지다(포크 사본은 같은 user 엔트리라 같은 턴).
+  (1) user 메시지 맨 앞의 `<skill name="..." location="...">` 블록(`/skill:name` 이 전개된 것, `agent-session.ts` `parseSkillBlock`),
+  (2) `read` 도구 호출(직접이든 codemode `nestedCalls` 안이든)의 `arguments.path` 가 `/SKILL.md` 로 끝나는 것. 앞의 `@` 는 떼고 `~/` 는 홈,
+  상대 경로는 세션 헤더의 `cwd` 기준. 경로를 실제 경로로 바꿔 모은 스킬 파일과 맞추고, 블록의 `location` 이 맞지 않으면 블록의 `name` 으로
+  맞춘다. 시스템 메시지의 `<available_skills>` 목록은 쓴 것이 아니다. `bash` 로 SKILL.md 를 읽은 것(`cat`)은 세지 못한다.
+  `lastUsedAt` 은 그 엔트리의 `timestamp`.
+
+### Pi 패키지·확장 (`plugins`)
+
+- `settings.json` `packages[]`(문자열 또는 `{ source, skills?, ... }`). `builtin:*` 은 넣지 않는다.
+  - `npm:<spec>` → `marketplace: 'npm'`, 이름은 spec 의 패키지 이름, 설치 위치 `<agent-dir>/npm/node_modules/<name>`.
+  - `git:<host>/<path>[@ref]` 와 `https://`·`ssh://`·`git://` URL → `'git'`, 이름은 저장소 이름, 설치 위치 `<agent-dir>/git/<host>/<path>`.
+  - 그 밖(로컬 경로, `<agent-dir>` 기준 상대 경로) → `'local'`, 이름은 `package.json` `name`, 없으면 폴더 이름.
+  - `version`: 설치된 `package.json` 의 `version`. 없으면 npm spec 의 정확한 버전(`1.2.3`), 그것도 아니면 null. git ref 는 쓰지 않는다
+    (커밋 해시일 수 있다). 설치되지 않은 패키지도 목록에는 넣는다.
+  - 스킬 폴더: `package.json` 의 `pi` 매니페스트에 `extensions`·`skills`·`prompts`·`themes` 중 하나라도 있으면 `pi.skills` 의 일반 경로만
+    (glob·`!`·`+`·`-` 항목은 건너뜀), 매니페스트가 없으면 `<패키지>/skills`. settings 항목이 `skills: []` 면 스킬 없음. 그 밖의 필터는
+    적용하지 않아 Pi 가 싣는 것보다 많이 보일 수 있다.
+- 확장: `settings.json` `extensions[]` 의 일반 경로(`builtin:*`, `+`·`-`·`!` 항목, glob 제외)와 `<agent-dir>/extensions/` 의 `*.ts`·`*.js` 파일·폴더.
+  `marketplace: 'local'`, 이름은 파일 이름(확장자 뺌, `index.ts` 면 폴더 이름), `version: null`.
+- `enabled` 는 늘 true(패키지를 통째로 끄는 설정이 없다). `uses` 는 그 패키지 스킬 `uses` 의 합. 같은 출처·이름은 한 번만.
+
+### Pi 사용 기록 (세션 JSONL)
+
+- 세션 폴더: `$PI_CODING_AGENT_SESSION_DIR`, 없으면 `settings.json` `sessionDir`(절대 경로나 `~/` 만. 상대 경로는 Pi 를 띄운 폴더 기준이라
+  찾을 수 없어 `warnings[]` 에 남기고 건너뜀), 그리고 기본 폴더 `<agent-dir>/sessions` 를 **함께** 읽는다(설정을 바꾸기 전 세션이 남아 있음).
+  기본 폴더는 `--<cwd 인코딩>--/<시각>_<id>.jsonl`, 직접 지정한 폴더는 파일이 바로 들어 있다. 두 경우 모두 아래 `*.jsonl` 을 재귀로 찾는다.
+- 줄 단위 스트리밍. 날짜는 모든 줄의 첫 `"timestamp":"` 로 뽑는다(엔트리 timestamp 는 ISO 문자열, 메시지 안 timestamp 는 숫자라 겹치지 않음).
+  JSON.parse 는 파일 첫 줄(`"type":"session"` 헤더, `cwd` 를 얻음)과 `"role":"assistant"`, `"role":"user"`, `"nestedCalls"` 가 든 줄만 한다.
+- assistant 메시지(`message.role === 'assistant'`): `message.model` 을 메시지 하나에 1회 센다(id 검사는 Claude Code 와 같고 provider 는
+  붙이지 않는다. `anthropic/claude-sonnet-4.5` 처럼 라우터가 붙인 접두사는 마지막 `/` 뒤만 쓴다). `message.content[]` 의 `{type:'toolCall', id, name, arguments}` 를 센다.
+- toolResult 메시지의 `nestedCalls.calls[]`(`{id, name, arguments?}`, id 는 `<부른 도구 호출 id>/<n>`)도 같은 규칙으로 센다. MCP 서버의
+  기본 노출 방식(`codemode`)에서는 MCP 호출이 여기에만 남는다.
+- 도구 호출: `name` 이 `mcp__` 로 시작하면 `mcpCalls`, `subagent` 면 `subagentRuns` 에 `arguments.tasks`·`chain` 길이(없으면 1)를 더한다.
+  내장 도구 이름이면 `builtinTools`. 모두 `toolCalls` 에 1. MCP 호출은 서버 이름의 `[A-Za-z0-9_]` 밖 글자를 `_` 로 바꾼
+  `mcp__<server>__` 접두사로 설정된 서버에 돌린다(긴 접두사 우선. 서버 이름에 `__` 가 있어도 된다). 설정에 없는 서버(프로젝트 MCP)는
+  `mcpCalls` 에만 들어간다. MCP 리소스 도구(`read_mcp_resource` 등)는 MCP 호출로 세지 않는다.
+- **포크 중복 제거**: `/fork`·`/clone` 은 부모 엔트리를 `id`·`timestamp` 그대로 새 파일에 복사한다. 엔트리 id 는 8자리 hex 라 다른 세션과
+  겹칠 수 있어 `id@timestamp` 를 엔트리 키로 쓴다. assistant 메시지는 엔트리 키로, 도구 호출은 `<엔트리 timestamp>|<toolCall id>` 로,
+  nested 호출은 `<toolResult timestamp>|<nested id>` 로 한 번만 센다. 세션 수는 파일 수 그대로다.
+- 진행률은 `Pi 세션 읽는 중 300/1050`.
+
 ### 활동일 합계 (`activity`)
 
-Claude Code 대화 기록의 날짜(UTC timestamp)와 Codex 세션 경로의 날짜를 **합집합**으로 모아 `activeDays`·`firstActivity`·`lastActivity`
-를 낸다. 두 도구를 같은 날 쓰면 하루로 센다. 날짜 목록 자체는 작업 일정이 드러나므로 내보내지 않는다.
-사용 기록을 하나라도 읽었으면 객체, 하나도 안 읽었으면(`--no-usage`, 둘 다 없음, 읽기 실패) `null` 이다.
+Claude Code 대화 기록의 날짜(UTC timestamp), Codex 세션 경로의 날짜, Pi 세션 엔트리의 날짜(UTC timestamp)를 **합집합**으로 모아
+`activeDays`·`firstActivity`·`lastActivity` 를 낸다. 여러 도구를 같은 날 쓰면 하루로 센다. 날짜 목록 자체는 작업 일정이 드러나므로 내보내지 않는다.
+사용 기록을 하나라도 읽었으면 객체, 하나도 안 읽었으면(`--no-usage`, 모두 없음, 읽기 실패) `null` 이다.
 도구별 `usage.activeDays` 는 그대로 둔다.
 
 ## 가림 처리 (`redact`)

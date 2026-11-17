@@ -81,6 +81,24 @@ export type CodexUsage = {
   activeDays: number;
 };
 
+export type PiUsage = {
+  /** Session files (`/fork` and `/clone` make new files, so each counts). */
+  sessions: number;
+  /** Tool calls the model made, plus calls made from inside a tool (codemode nestedCalls). Deduped across forked files. */
+  toolCalls: number;
+  /** Calls per Pi built-in tool (read, bash, edit, write, grep, find, ls, powershell, codemode, tool_search). */
+  builtinTools: Record<string, number>;
+  /** `mcp__<server>__<tool>` calls, direct or from codemode scripts. */
+  mcpCalls: number;
+  /** Agents started by a `subagent` tool call (an extension tool; Pi has no built-in subagents). */
+  subagentRuns: number;
+  /** Assistant messages per model id. Ids that are not plain model names are under 'other'. */
+  models?: Record<string, number>;
+  firstActivity: string | null;
+  lastActivity: string | null;
+  activeDays: number;
+};
+
 export type ClaudeCodeSource = {
   model: string | null;
   since: string | null;
@@ -111,7 +129,20 @@ export type CodexSource = {
   usage: CodexUsage | null;
 };
 
-/** Active days across both tools (union of dates, not the larger of the two). Counts only; the day list is not kept. */
+/** Pi (pi.dev coding agent). Pi has no hooks on disk and no built-in subagents, so neither is listed. */
+export type PiSource = {
+  model: string | null;
+  mcpServers: McpServer[];
+  skills: Skill[];
+  /** Pi packages (npm, git, local) and user extensions. Built-in extensions (`builtin:*`) are not listed. */
+  plugins: Plugin[];
+  /** Prompt templates (`<agent-dir>/prompts/*.md`). */
+  commands: Command[];
+  instructions: Instructions;
+  usage: PiUsage | null;
+};
+
+/** Active days across all tools (union of dates, not the larger of the two). Counts only; the day list is not kept. */
 export type Activity = { activeDays: number; firstActivity: string | null; lastActivity: string | null };
 
 export type Redactions = { paths: number; emails: number; secrets: number; urls: number };
@@ -122,7 +153,9 @@ export type HarnessProfile = {
   collector: { name: 'harness-craft'; version: string };
   claudeCode: ClaudeCodeSource | null;
   codex: CodexSource | null;
-  /** Optional for older files. null when no usage scan ran (`--no-usage`, or neither tool found). */
+  /** Optional for older files. null when the Pi agent directory does not exist. */
+  pi?: PiSource | null;
+  /** Optional for older files. null when no usage scan ran (`--no-usage`, or no tool found). */
   activity?: Activity | null;
   redactions: Redactions;
   warnings: string[];

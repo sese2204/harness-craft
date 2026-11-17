@@ -53,14 +53,20 @@ function toolUses(profile: HarnessProfile): ToolUse[] {
       topModel: topModel(codex.usage?.models) ?? codex.model,
     });
   }
+  const pi = profile.pi;
+  if (pi) {
+    out.push({ origin: 'pi', activeDays: pi.usage?.activeDays ?? 0, topModel: topModel(pi.usage?.models) ?? pi.model });
+  }
   return out;
 }
 
 /**
- * The main tool is the one with more active days (Codex: interactive days; Claude Code on a tie); its most used model picks the class.
- * The other tool adds a second class when it has ≥25% of the main tool's days and maps to a different class.
+ * The main tool is the one with the most active days (Codex: interactive days; ties go to Claude Code, then Codex, then Pi);
+ * its most used model picks the class. The strongest other tool adds a second class when it has ≥25% of the main tool's
+ * days and maps to a different class.
  */
 export function buildHero(profile: HarnessProfile, level: number): HeroInfo {
+  // toolUses lists claude, codex, pi in that order and sort is stable, so ties keep that preference.
   const tools = toolUses(profile).sort((a, b) => b.activeDays - a.activeDays);
   const main = tools[0];
   const cls: PartyClass = partyClass(main?.topModel ?? null);

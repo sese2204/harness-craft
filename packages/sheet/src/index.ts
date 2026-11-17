@@ -45,6 +45,7 @@ function sourcesOf(profile: HarnessProfile): Origin[] {
   const out: Origin[] = [];
   if (profile.claudeCode) out.push('claude');
   if (profile.codex) out.push('codex');
+  if (profile.pi) out.push('pi');
   return out;
 }
 

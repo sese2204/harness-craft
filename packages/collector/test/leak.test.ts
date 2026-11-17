@@ -7,22 +7,25 @@ import { FAKE_GHP, FAKE_SK } from './fakeTokens.js';
 import { LEAK_MARKERS as MARKERS, makeHome, scanFixture } from './helpers.js';
 
 test('no planted marker survives in the profile JSON', async () => {
-  const { profile, home } = await scanFixture();
+  // With ~/.pi too: auth.json, models.json, mcp.json env/headers and session text all carry LEAK- markers.
+  const { profile, home } = await scanFixture({ pi: true });
   const json = JSON.stringify(profile);
   for (const marker of [...MARKERS, home]) {
     assert.equal(json.includes(marker), false, `marker leaked: ${marker}`);
   }
+  assert.ok(profile.pi?.usage, 'Pi was scanned');
   // Something was actually redacted, so the test is not passing vacuously.
   assert.ok(profile.redactions.secrets > 0 && profile.redactions.urls > 0);
   assert.ok(profile.redactions.emails > 0 && profile.redactions.paths > 0);
 });
 
 test('no marker leaks without usage either', async () => {
-  const { profile, home } = await scanFixture({ usage: false });
+  const { profile, home } = await scanFixture({ pi: true, usage: false });
   const json = JSON.stringify(profile);
   for (const marker of [...MARKERS, home]) assert.equal(json.includes(marker), false, marker);
   assert.equal(profile.claudeCode?.usage, null);
   assert.equal(profile.codex?.usage, null);
+  assert.equal(profile.pi?.usage, null);
 });
 
 test('fixture placeholders are filled with real token shapes before scanning', async () => {

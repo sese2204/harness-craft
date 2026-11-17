@@ -27,7 +27,7 @@ export interface CharacterSheetProps {
   share?: ShareAction | null;
 }
 
-const SOURCE_NAMES: Readonly<Record<Origin, string>> = { claude: 'Claude Code', codex: 'Codex' };
+const SOURCE_NAMES: Readonly<Record<Origin, string>> = { claude: 'Claude Code', codex: 'Codex', pi: 'Pi' };
 
 function sourceTitle(sources: readonly Origin[]): string {
   const names = sources.length > 0 ? sources.map((s) => SOURCE_NAMES[s]) : [SOURCE_NAMES.claude];

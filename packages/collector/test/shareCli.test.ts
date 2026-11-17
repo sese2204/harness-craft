@@ -107,7 +107,7 @@ test('Korean, emoji and markup in the name survive the round trip without raw ta
 });
 
 test('no planted marker reaches the shared HTML, even with descriptions', async () => {
-  const { home, cleanup } = await makeHome();
+  const { home, cleanup } = await makeHome({ pi: true });
   try {
     const r = run(['share', '--home', home, '--descriptions'], home);
     assert.equal(r.status, 0, r.stderr);
@@ -115,6 +115,7 @@ test('no planted marker reaches the shared HTML, even with descriptions', async 
     for (const marker of [...LEAK_MARKERS, home]) assert.equal(html.includes(marker), false, `marker leaked: ${marker}`);
     // Not vacuous: descriptions made it in.
     assert.ok(shareData(html).profile.claudeCode?.skills.some((s) => s.description !== ''));
+    assert.ok(shareData(html).profile.pi?.skills.some((s) => s.description !== ''));
   } finally {
     await cleanup();
   }

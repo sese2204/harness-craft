@@ -1,6 +1,6 @@
 # harness-craft
 
-내 Claude Code·Codex 하네스(MCP·스킬·훅·서브에이전트)와 사용 기록을 픽셀 RPG 캐릭터 시트로 만든다.
+내 Claude Code·Codex·Pi 하네스(MCP·스킬·훅·서브에이전트)와 사용 기록을 픽셀 RPG 캐릭터 시트로 만든다.
 
 ```bash
 npx harness-craft share --name <닉네임>

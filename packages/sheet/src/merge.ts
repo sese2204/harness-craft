@@ -1,4 +1,4 @@
-// Merges Claude Code and Codex into one character and removes hidden items (docs/sheet-mapping.md 「합치기」).
+// Merges Claude Code, Codex and Pi into one character and removes hidden items (docs/sheet-mapping.md 「합치기」).
 import type { Agent, HarnessProfile, McpServer, Skill, Source } from '@harness-craft/schema';
 
 import { compareNames } from './rank.js';
@@ -41,7 +41,7 @@ export interface MergedHarness {
   hooks: MergedHook[];
 }
 
-const ORIGIN_ORDER: readonly Origin[] = ['claude', 'codex'];
+const ORIGIN_ORDER: readonly Origin[] = ['claude', 'codex', 'pi'];
 
 /** Visibility key of a hook. Handlers with the same event and label are indistinguishable, so they share a key. */
 export function hookKey(hook: { event: string; label: string }): string {
@@ -115,6 +115,8 @@ function mergeAgents(lists: ReadonlyArray<readonly [Origin, readonly Agent[]]>):
 export function mergeProfile(profile: HarnessProfile): MergedHarness {
   const claude = profile.claudeCode;
   const codex = profile.codex;
+  // Pi has no hooks and no agents; older profiles have no pi key.
+  const pi = profile.pi ?? null;
   const hooks: MergedHook[] = [
     ...(claude?.hooks ?? []).map((h) => ({ key: hookKey(h), event: h.event, label: h.label, origin: 'claude' as const })),
     ...(codex?.hooks ?? []).map((h) => ({ key: hookKey(h), event: h.event, label: h.label, origin: 'codex' as const })),
@@ -123,10 +125,12 @@ export function mergeProfile(profile: HarnessProfile): MergedHarness {
     mcp: mergeMcp([
       ['claude', claude?.mcpServers ?? []],
       ['codex', codex?.mcpServers ?? []],
+      ['pi', pi?.mcpServers ?? []],
     ]),
     skills: mergeSkills([
       ['claude', claude?.skills ?? []],
       ['codex', codex?.skills ?? []],
+      ['pi', pi?.skills ?? []],
     ]),
     agents: mergeAgents([
       ['claude', claude?.agents ?? []],

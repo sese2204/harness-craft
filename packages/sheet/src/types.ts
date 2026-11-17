@@ -7,7 +7,7 @@ export type Rarity = 'common' | 'rare' | 'epic' | 'legendary';
 
 export type IconName = 'sword' | 'shield' | 'potion' | 'book' | 'gear' | 'scroll' | 'star' | 'eye' | 'key' | 'bolt';
 
-export type Origin = 'claude' | 'codex';
+export type Origin = 'claude' | 'codex' | 'pi';
 
 export type HiddenKind = 'mcp' | 'skills' | 'agents' | 'hooks';
 
@@ -56,7 +56,7 @@ export type HeroRank = '견습' | '정식' | '숙련' | '각성';
 export interface HeroInfo {
   /** From the main tool's most used model (same mapping as party members). */
   cls: PartyClass;
-  /** Class of the other tool when both are used enough and they differ; drawn as an accent. */
+  /** Class of the strongest other tool when it is used enough and differs; drawn as an accent. */
   secondary: PartyClass | null;
   model: string | null;
   source: Origin | null;

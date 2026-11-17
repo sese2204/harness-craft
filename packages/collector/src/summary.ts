@@ -1,4 +1,4 @@
-import type { ClaudeCodeSource, CodexSource, HarnessProfile } from './types.js';
+import type { ClaudeCodeSource, CodexSource, HarnessProfile, PiSource } from './types.js';
 
 export const NO_UPLOAD_LINE = '아무것도 업로드하지 않았습니다.';
 const MAX_WARNINGS_SHOWN = 10;
@@ -37,6 +37,21 @@ function codexLines(c: CodexSource): string[] {
   return lines;
 }
 
+function piLines(p: PiSource): string[] {
+  const lines = [
+    `Pi — 모델 ${p.model ?? '-'}`,
+    `  MCP ${p.mcpServers.length} · 스킬 ${p.skills.length} · 패키지·확장 ${p.plugins.length} · 프롬프트 ${p.commands.length}`,
+    `  AGENTS.md ${p.instructions.present ? `${p.instructions.lines}줄` : '없음'}`,
+  ];
+  const u = p.usage;
+  if (u) {
+    lines.push(
+      `  사용 기록: 세션 ${u.sessions} · 도구 호출 ${u.toolCalls} · MCP 호출 ${u.mcpCalls} · 서브에이전트 실행 ${u.subagentRuns} · 활동일 ${u.activeDays}${range(u.firstActivity, u.lastActivity)}`,
+    );
+  }
+  return lines;
+}
+
 /** Human-readable summary for stderr. The last line always states that nothing was uploaded. */
 export function formatSummary(profile: HarnessProfile, savedTo: string | null): string {
   const r = profile.redactions;
@@ -44,7 +59,8 @@ export function formatSummary(profile: HarnessProfile, savedTo: string | null): 
     `harness-craft ${profile.collector.version} 스캔 결과`,
     ...(profile.claudeCode ? claudeLines(profile.claudeCode) : ['Claude Code — 찾지 못함']),
     ...(profile.codex ? codexLines(profile.codex) : ['Codex — 찾지 못함']),
-    ...(profile.activity ? [`활동일 합계 ${profile.activity.activeDays}일 (두 도구 중 하루라도 쓴 날)${range(profile.activity.firstActivity, profile.activity.lastActivity)}`] : []),
+    ...(profile.pi ? piLines(profile.pi) : ['Pi — 찾지 못함']),
+    ...(profile.activity ? [`활동일 합계 ${profile.activity.activeDays}일 (도구 중 하나라도 쓴 날)${range(profile.activity.firstActivity, profile.activity.lastActivity)}`] : []),
     `가림 처리: 경로 ${r.paths} · 이메일 ${r.emails} · 비밀값 ${r.secrets} · URL ${r.urls}`,
   ];
   if (profile.warnings.length > 0) {

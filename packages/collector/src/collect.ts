@@ -4,6 +4,7 @@ import { collectClaudeCode } from './claude/index.js';
 import { collectCodex } from './codex/index.js';
 import type { ScanContext } from './context.js';
 import { Diagnostics } from './diagnostics.js';
+import { collectPi } from './pi/index.js';
 import { Redactor } from './redact.js';
 import type { Activity, HarnessProfile } from './types.js';
 import { dateRange, type Progress } from './usage/lines.js';
@@ -13,13 +14,17 @@ export type CollectOptions = {
   home: string;
   /** Codex home ($CODEX_HOME). Default <home>/.codex. Never read from the environment here, so tests stay hermetic. */
   codexHome?: string;
+  /** Pi agent directory ($PI_CODING_AGENT_DIR). Default <home>/.pi/agent. Never read from the environment here. */
+  piAgentDir?: string;
+  /** Pi session directory ($PI_CODING_AGENT_SESSION_DIR). Default: settings.json `sessionDir`, else <piAgentDir>/sessions. */
+  piSessionDir?: string;
   usage: boolean;
   now?: () => Date;
   onProgress?: (label: string) => Progress;
 };
 
 /**
- * Active days across both tools: the union of dates, so a day used in both counts once. Only the count and the first
+ * Active days across all tools: the union of dates, so a day used in several counts once. Only the count and the first
  * and last day go out; the day list itself would show the work schedule. null when no usage scan ran.
  */
 export function unionActivity(...daySets: ReadonlyArray<ReadonlySet<string> | null>): Activity | null {
@@ -33,16 +38,21 @@ export async function collectProfile(options: CollectOptions): Promise<HarnessPr
   const redactor = new Redactor(options.home);
   const diag = new Diagnostics(options.home);
   const codexHome = options.codexHome ?? join(options.home, '.codex');
-  const ctx: ScanContext = { home: options.home, codexHome, redactor, diag, onProgress: options.onProgress };
+  const piAgentDir = options.piAgentDir ?? join(options.home, '.pi', 'agent');
+  const ctx: ScanContext = {
+    home: options.home, codexHome, piAgentDir, piSessionDir: options.piSessionDir ?? null, redactor, diag, onProgress: options.onProgress,
+  };
   const claude = await collectClaudeCode(ctx, { usage: options.usage });
   const codex = await collectCodex(ctx, { usage: options.usage });
+  const pi = await collectPi(ctx, { usage: options.usage });
   return {
     schemaVersion: 1,
     generatedAt: (options.now ?? (() => new Date()))().toISOString(),
     collector: { name: 'harness-craft', version: collectorVersion() },
     claudeCode: claude.source,
     codex: codex.source,
-    activity: unionActivity(claude.days, codex.days),
+    pi: pi.source,
+    activity: unionActivity(claude.days, codex.days, pi.days),
     redactions: redactor.totals(),
     warnings: diag.list(),
   };

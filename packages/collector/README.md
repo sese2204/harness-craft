@@ -1,9 +1,9 @@
 # harness-craft
 
-내 Claude Code·Codex 하네스(MCP·스킬·훅·서브에이전트)와 사용 기록을 픽셀 RPG 캐릭터 시트로 만든다.
+내 Claude Code·Codex·Pi 하네스(MCP·스킬·훅·서브에이전트)와 사용 기록을 픽셀 RPG 캐릭터 시트로 만든다.
 결과는 혼자 열리는 HTML 한 장이고, 그 파일만 보내면 된다. 네트워크는 쓰지 않는다.
 
-Turn your Claude Code and Codex harness into a pixel-RPG character sheet: one self-contained HTML file, no network.
+Turn your Claude Code, Codex and Pi harness into a pixel-RPG character sheet: one self-contained HTML file, no network.
 
 ## 쓰는 법
 
@@ -36,11 +36,15 @@ npx harness-craft share --name <닉네임>
 | `~/.codex/plugins/cache/**/.codex-plugin/plugin.json` | Codex 플러그인 이름·버전, 플러그인 스킬·훅 |
 | `~/.codex/sessions/**/*.jsonl` | 세션 수(대화형·exec), 스킬·MCP·명령 호출 횟수, 가장 많이 쓴 모델, 활동일 |
 | `~/.codex/agents/*.toml`, `config.toml` 의 `[agents.*]` | Codex 커스텀 에이전트 이름·설명·모델(`developer_instructions` 는 담지 않음) |
-| 위 두 도구의 날짜 | 활동일 수와 첫날·마지막 날(날짜 목록은 담지 않음) |
+| `~/.pi/agent/settings.json`, `mcp.json`, `AGENTS.md`, `prompts/*.md` | Pi 모델, MCP 서버 이름(`env`·`headers` 값은 담지 않음), 패키지·확장 이름·버전, 프롬프트 템플릿 이름 |
+| `~/.pi/agent/skills`, `~/.agents/skills`, 설정의 `skills` 경로, Pi 패키지 스킬 | Pi 스킬 이름 |
+| `~/.pi/agent/sessions/**/*.jsonl` | Pi 세션 수, 도구·MCP·스킬 호출 횟수, subagent 실행 수, 가장 많이 쓴 모델, 활동일 |
+| 위 도구들의 날짜 | 활동일 수와 첫날·마지막 날(날짜 목록은 담지 않음) |
 
 환경변수 값, 헤더, 명령 인자, 파일 본문, 절대 경로, 대화 내용은 담지 않는다.
-`~/.codex/auth.json`, `~/.claude/.credentials.json`, sqlite 파일은 열지 않는다.
-`$CODEX_HOME` 을 정해 두었으면 `~/.codex` 대신 그 폴더를 읽는다.
+`~/.codex/auth.json`, `~/.claude/.credentials.json`, Pi 의 `auth.json`·`mcp-auth.json`·`models.json`, sqlite 파일은 열지 않는다.
+`$CODEX_HOME` 을 정해 두었으면 `~/.codex` 대신 그 폴더를, `$PI_CODING_AGENT_DIR` 를 정해 두었으면 `~/.pi/agent` 대신 그 폴더를 읽는다.
+Pi 세션은 `$PI_CODING_AGENT_SESSION_DIR` 나 설정의 `sessionDir` 가 있으면 그 폴더도 함께 읽는다.
 MCP 서버 주소는 공개 서비스로 알려진 곳만 남기고, 공유 파일에서는 그마저 뺀다.
 
 ## 라이선스

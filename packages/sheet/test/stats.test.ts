@@ -4,12 +4,14 @@ import { test } from 'node:test';
 import { levelFor, score, toSheet } from '../src/index.js';
 import { agent, claudeSource, codexSource, hook, mcp, profile, skill, visibility } from './helpers.js';
 
-test('score() follows round(100 × min(1, log10(1+x)/log10(1+cap)))', () => {
-  assert.equal(score(0, 2000), 0);
-  assert.equal(score(9, 99), 50);
-  assert.equal(score(2000, 2000), 100);
-  assert.equal(score(999_999, 120), 100);
-  assert.equal(score(100, 2000), Math.round((100 * Math.log10(101)) / Math.log10(2001)));
+test('score() is 100·x/(x+half): 50 at half, 75 at 3×, 90 at 9×, 99 at 99×, never capped', () => {
+  assert.equal(score(0, 300), 0);
+  assert.equal(score(300, 300), 50);
+  assert.equal(score(900, 300), 75);
+  assert.equal(score(2700, 300), 90);
+  assert.equal(score(29_700, 300), 99);
+  assert.equal(score(30, 30), 50);
+  assert.ok(score(100_000, 10_000) < 100);
 });
 
 test('level = floor(sqrt(exp/25)) with EXP progress toward the next level', () => {

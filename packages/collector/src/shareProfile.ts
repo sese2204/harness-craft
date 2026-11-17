@@ -1,5 +1,5 @@
 // What goes into the shared HTML: hidden items removed, descriptions blanked unless asked for (docs/share-spec.md).
-import type { Agent, ClaudeCodeSource, CodexSource, HarnessProfile, Hook, McpServer, Source } from './types.js';
+import type { Agent, ClaudeCodeSource, CodexSource, HarnessProfile, Hook, McpServer, PiSource, Source } from './types.js';
 
 export interface ShareOptions {
   /** Case-insensitive globs where `*` matches any run of characters. */
@@ -92,14 +92,26 @@ function shareCodex(c: CodexSource, filter: Filter): CodexSource {
   };
 }
 
+function sharePi(p: PiSource, filter: Filter): PiSource {
+  return {
+    ...p,
+    mcpServers: shareMcp(p.mcpServers, filter),
+    skills: keep(p.skills, filter, (s) => fromHiddenPlugin(s.source, filter)).map((s) => described(s, filter)),
+    plugins: keep(p.plugins, filter).map((plugin) => ({ ...plugin })),
+    commands: keep(p.commands, filter).map((cmd) => described(cmd, filter)),
+  };
+}
+
 function itemCount(profile: HarnessProfile): number {
   const c = profile.claudeCode;
   const x = profile.codex;
+  const p = profile.pi;
   const claude = c ? c.mcpServers.length + c.skills.length + c.agents.length + c.hooks.length + c.plugins.length + c.commands.length : 0;
   const codex = x
     ? x.mcpServers.length + x.skills.length + (x.agents?.length ?? 0) + (x.plugins?.length ?? 0) + x.hooks.length + x.commands.length
     : 0;
-  return claude + codex;
+  const pi = p ? p.mcpServers.length + p.skills.length + p.plugins.length + p.commands.length : 0;
+  return claude + codex + pi;
 }
 
 /**
@@ -109,8 +121,8 @@ function itemCount(profile: HarnessProfile): number {
  */
 export function prepareShareProfile(profile: HarnessProfile, options: ShareOptions): PreparedShare {
   const isHidden = globMatcher(options.hide);
-  // A hidden plugin name takes that plugin's skills and agents with it, in either tool.
-  const plugins = [...(profile.claudeCode?.plugins ?? []), ...(profile.codex?.plugins ?? [])];
+  // A hidden plugin name takes that plugin's skills and agents with it, in any tool.
+  const plugins = [...(profile.claudeCode?.plugins ?? []), ...(profile.codex?.plugins ?? []), ...(profile.pi?.plugins ?? [])];
   const filter: Filter = {
     isHidden,
     hiddenPlugins: new Set(plugins.filter((p) => isHidden(p.name)).map((p) => p.name)),
@@ -121,6 +133,8 @@ export function prepareShareProfile(profile: HarnessProfile, options: ShareOptio
     collector: { ...profile.collector },
     claudeCode: profile.claudeCode ? shareClaude(profile.claudeCode, filter) : null,
     codex: profile.codex ? shareCodex(profile.codex, filter) : null,
+    // Older profiles have no pi key; keep it absent rather than adding null.
+    ...(profile.pi !== undefined ? { pi: profile.pi && sharePi(profile.pi, filter) } : {}),
     // Counts and first/last day only, so it goes through unchanged.
     ...(profile.activity !== undefined ? { activity: profile.activity && { ...profile.activity } } : {}),
     redactions: { ...profile.redactions },
