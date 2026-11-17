@@ -50,6 +50,19 @@ export interface SkillCard {
 
 export type PartyClass = '마법사' | '궁수' | '도적' | '현자' | '전사';
 
+/** Hero look by level: 1–9 견습, 10–29 정식, 30–49 숙련, 50+ 각성. */
+export type HeroRank = '견습' | '정식' | '숙련' | '각성';
+
+export interface HeroInfo {
+  /** From the main tool's most used model (same mapping as party members). */
+  cls: PartyClass;
+  /** Class of the other tool when both are used enough and they differ; drawn as an accent. */
+  secondary: PartyClass | null;
+  model: string | null;
+  source: Origin | null;
+  rank: HeroRank;
+}
+
 export interface PartyMember {
   name: string;
   role: string;
@@ -100,6 +113,7 @@ export interface SheetModel {
   updatedAt: string;
   sources: Origin[];
   level: LevelInfo;
+  hero: HeroInfo;
   title: string;
   equipSummary: string;
   equipment: EquipSlot[];

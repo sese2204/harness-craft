@@ -63,6 +63,15 @@ function checkSource(value: unknown, path: string, kind: 'claude' | 'codex', err
   if (value.usage !== null) {
     checkFields(value.usage, kind === 'claude' ? CLAUDE_USAGE_FIELDS : CODEX_USAGE_FIELDS, `${path}.usage`, errors);
   }
+  // usage.models is optional (added after schema v1 shipped): model id -> count.
+  if (isRecord(value.usage) && value.usage.models !== undefined) {
+    if (!isRecord(value.usage.models)) errors.push(`${path}.usage.models 가 객체가 아닙니다`);
+    else {
+      for (const [model, n] of Object.entries(value.usage.models)) {
+        if (!isCount(n)) errors.push(`${path}.usage.models.${model} 값이 올바르지 않습니다`);
+      }
+    }
+  }
   if (kind === 'claude' && isRecord(value.usage) && isRecord(value.usage.builtinTools)) {
     for (const [tool, n] of Object.entries(value.usage.builtinTools)) {
       if (!isCount(n)) errors.push(`${path}.usage.builtinTools.${tool} 값이 올바르지 않습니다`);

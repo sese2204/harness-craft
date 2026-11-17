@@ -118,6 +118,7 @@ type ClaudeUsage = {
   projects: number;                    // projects/ 아래 디렉터리 개수 (이름은 내보내지 않음)
   toolCalls: number;                   // 중복 제거한 tool_use 전체
   builtinTools: Record<string, number>;// mcp__ 가 아닌 도구 이름별
+  models?: Record<string, number>;     // 모델 id 별 assistant API 메시지 수(message.id 고유). 아래 「모델별 사용 수」
   firstActivity: string | null; lastActivity: string | null;   // YYYY-MM-DD
   activeDays: number;                  // timestamp 날짜(로컬 아님, UTC) 고유 개수
 };
@@ -125,9 +126,11 @@ type ClaudeUsage = {
 type CodexUsage = {
   sessions: number;                    // 사람이 연 대화형 세션 파일 수 (서브에이전트 rollout 과 codex exec 제외)
   execSessions?: number;               // codex exec (비대화형) 세션 파일 수. 예전 파일에는 없을 수 있음
+  interactiveDays?: number;            // 대화형 세션이 있던 날 수 (시트가 주 도구를 고를 때 씀). 예전 파일에는 없을 수 있음
   mcpCalls: number;
   subagentActivities: number;          // 서브에이전트를 띄운 횟수 (SubAgentActivity 중 kind 'started' 만)
   commandExecutions: number;
+  models?: Record<string, number>;     // 모델 id 별 턴 수. 대화형 세션만, 대화형 턴이 없을 때만 모든 턴. 아래 「모델별 사용 수」
   firstActivity: string | null; lastActivity: string | null; activeDays: number;
 };
 
@@ -165,6 +168,13 @@ type Activity = {                      // 두 도구를 합친 활동일. 날짜
   - `name === 'Agent' || name === 'Task'` → `input.subagent_type` 이름별 집계
   - 그 외 → `builtinTools[name]`
 - `type === 'user'` 이고 `message.content` 가 문자열이며 `<command-name>/x</command-name>` 이 있으면 `x` 를 슬래시 호출로 센다.
+- 모델별 사용 수(`usage.models`): `"type":"assistant"` 가 든 줄의 `message.model` 을 `message.id` 고유 개수로 센다(API 메시지 하나가
+  내용 블록마다 한 줄씩 여러 줄로 나뉘어 같은 id 를 갖는다). 서브에이전트 기록(`<session>/subagents/*.jsonl`)도 센다. `<synthetic>` 은 뺀다.
+  줄 전체를 훑지 않으려고, 줄 앞 1KB 안의 첫 `"message":{` 바로 뒤가 `"model":"` 인 줄만 JSON.parse 없이 읽는다(assistant 레코드는 이렇게
+  쓰이고, user·system 메시지는 `"role"` 로 시작한다. 이 PC 의 assistant 줄 102,575개 모두 이 모양이었고 `"message":{` 는 206바이트 안에 있었다).
+  `"id":"` 는 `"content":` 보다 앞에 있을 때만 쓴다. 이 모양이 아닌 assistant 줄은 `tool_use` 등으로 어차피 parse 할 때만 센다(이 PC 에서 23줄).
+  도구 입력 안의 `"model"` 키는 쓰지 않는다. 전체 스캔 시간 증가는 약 0.3초(5.4초 → 5.8초)였다.
+- 모델 id 는 `/^[a-z0-9][a-z0-9.\-_]{0,63}$/i` 에 맞을 때만 그대로 쓰고, 아니면(경로·사내 배포 이름 등) `other` 로 센다. Codex 도 같다.
 - 진행률: 파일 100개마다 stderr 에 `대화 기록 읽는 중 300/1050` 를 덮어쓰기로 출력(`--json` 일 때도 stderr).
 
 ### 스킬 사용 횟수
@@ -201,6 +211,7 @@ hostname 은 소문자로 바꾸고 끝의 `.` 을 뗀 뒤 비교한다. 목록�
   **대화형 세션의 턴만** 세어 가장 많은 모델(동률이면 이름순)과 그 모델의 가장 흔한 `payload.effort` 를 쓴다. 대화형 턴이 없으면
   `exec`·서브에이전트까지 모든 턴으로, 그것도 없으면 `config.toml` 의 `model`·`model_reasoning_effort`. 포크된 서브에이전트 파일에 복사된
   부모 턴은 대화형 집계와 따로 중복 제거하므로 대화형 쪽에서 빠지지 않는다. 고른 쪽에 effort 가 없으면 effort 만 config 값을 쓴다.
+  같은 턴 집합(대화형, 없으면 전체)의 모델별 턴 수를 `usage.models` 로 내보낸다(id 검사는 Claude Code 와 같다).
 
 ### Codex 훅
 

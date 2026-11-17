@@ -57,6 +57,8 @@ export type ClaudeUsage = {
   projects: number;
   toolCalls: number;
   builtinTools: Record<string, number>;
+  /** Assistant API messages per model id (unique message.id). Ids that are not plain model names are under 'other'. Optional for older files. */
+  models?: Record<string, number>;
   firstActivity: string | null;
   lastActivity: string | null;
   activeDays: number;
@@ -67,9 +69,13 @@ export type CodexUsage = {
   sessions: number;
   /** Non-interactive `codex exec` runs. Optional for older files. */
   execSessions?: number;
+  /** Days with at least one interactive session (not exec, not subagent). */
+  interactiveDays?: number;
   mcpCalls: number;
   subagentActivities: number;
   commandExecutions: number;
+  /** Turns per model id from interactive sessions; all turns only when there are no interactive ones. Optional for older files. */
+  models?: Record<string, number>;
   firstActivity: string | null;
   lastActivity: string | null;
   activeDays: number;

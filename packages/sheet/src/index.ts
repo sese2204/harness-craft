@@ -4,6 +4,7 @@ import type { HarnessProfile } from '@harness-craft/schema';
 import { buildEquipment, buildInventory, EQUIP_SLOTS } from './items.js';
 import { applyVisibility, mergeProfile } from './merge.js';
 import { buildParty, buildPassives } from './party.js';
+import { buildHero } from './hero.js';
 import { buildStats, experience, levelFor, statInputs, titleFor } from './stats.js';
 import type { HiddenKind, Origin, SheetModel, Visibility } from './types.js';
 
@@ -12,7 +13,8 @@ export { hashName, pickByHash } from './hash.js';
 export { MCP_RARITY, SKILL_RARITY, rarityFor, type RarityThresholds } from './rank.js';
 export { hookKey } from './merge.js';
 export { EQUIP_SLOTS, ICON_NAMES, INVENTORY_SIZE, mcpIcon } from './items.js';
-export { PARTY_SIZE, PASSIVE_SIZE, roleBadge, partyClass } from './party.js';
+export { PARTY_SIZE, PASSIVE_SIZE, roleBadge, partyClass, CLASS_BADGE } from './party.js';
+export { buildHero, heroRank } from './hero.js';
 export { STAT_AXES, score, levelFor } from './stats.js';
 export { listEntries, type VisibilityEntry, type VisibilityEntries } from './entries.js';
 export { parseProfile, type ParseResult } from './validate.js';
@@ -52,11 +54,13 @@ export function toSheet(profile: HarnessProfile, visibility: Visibility): SheetM
   const equipment = buildEquipment(merged.mcp, showDescriptions);
   const equipped = equipment.filter((slot) => slot.item !== null).length;
   const stats = buildStats(statInputs(profile, merged));
+  const level = levelFor(experience(profile));
   return {
     handle: normalizeHandle(visibility.handle),
     updatedAt: formatUpdatedAt(profile.generatedAt),
     sources: sourcesOf(profile),
-    level: levelFor(experience(profile)),
+    level,
+    hero: buildHero(profile, level.level),
     title: titleFor(stats),
     equipSummary: `MCP 장비 ${equipped}/${EQUIP_SLOTS.length} 장착 · 스킬 ${merged.skills.length}개 보유`,
     equipment,

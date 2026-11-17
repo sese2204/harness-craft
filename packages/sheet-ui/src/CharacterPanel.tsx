@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import type { EquipSlot, EquipSlotId, SheetModel } from '@harness-craft/sheet';
+import { CLASS_BADGE, type EquipSlot, type EquipSlotId, type HeroInfo, type SheetModel } from '@harness-craft/sheet';
 
-import { HERO_ANCHORS, HeroFigure, HeroGround, WornPiece } from './hero';
+import { HERO_ANCHORS, HeroFigure, HeroGround, WornPiece, heroClassLabel } from './hero';
 import { PixelIcon } from './pixel';
 import styles from './sheet.module.css';
 import { COLOR, FONT_PIXEL, RARITY, formatNumber, formatUses, sectionLabel } from './theme';
@@ -83,12 +83,12 @@ function Connectors({ equipment }: { equipment: readonly EquipSlot[] }) {
 }
 
 /** Worn slots show the piece on the body (crown, horned helm…) with the MCP's own icon as a corner badge. */
-function SlotImage({ slot }: { slot: EquipSlot }) {
+function SlotImage({ slot, hero }: { slot: EquipSlot; hero: HeroInfo }) {
   if (!slot.item) return null;
   if (slot.slot === 'weapon' || slot.slot === 'offhand') return <PixelIcon name={slot.item.icon} scale={5} />;
   return (
     <>
-      <WornPiece slot={slot.slot} rarity={slot.item.rarity} box={50} />
+      <WornPiece slot={slot.slot} rarity={slot.item.rarity} box={50} hero={hero} />
       <span style={{ position: 'absolute', right: 2, bottom: 2, lineHeight: 0, background: COLOR.ink, padding: 1 }}>
         <PixelIcon name={slot.item.icon} scale={2} />
       </span>
@@ -96,7 +96,7 @@ function SlotImage({ slot }: { slot: EquipSlot }) {
   );
 }
 
-function SlotBox({ slot }: { slot: EquipSlot }) {
+function SlotBox({ slot, hero }: { slot: EquipSlot; hero: HeroInfo }) {
   const p = SLOT_POS[slot.slot];
   const color = slotColor(slot);
   const box: CSSProperties = {
@@ -109,7 +109,7 @@ function SlotBox({ slot }: { slot: EquipSlot }) {
       style={{ position: 'absolute', left: p.x, top: p.y, width: 64, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}
     >
       <div style={{ ...box, position: 'relative' }}>
-        {slot.item && <SlotImage slot={slot} />}
+        {slot.item && <SlotImage slot={slot} hero={hero} />}
       </div>
       <div
         className={styles.equipLabel}
@@ -122,7 +122,7 @@ function SlotBox({ slot }: { slot: EquipSlot }) {
   );
 }
 
-function EquipStage({ equipment }: { equipment: readonly EquipSlot[] }) {
+function EquipStage({ equipment, hero }: { equipment: readonly EquipSlot[]; hero: HeroInfo }) {
   const { ref, scale } = useFitScale(STAGE_W);
   return (
     <div ref={ref} style={{ width: '100%' }}>
@@ -135,14 +135,14 @@ function EquipStage({ equipment }: { equipment: readonly EquipSlot[] }) {
         >
           <div aria-hidden="true" style={{ position: 'absolute', left: 0, right: 0, top: 322, height: 3, background: COLOR.grid }} />
           <div aria-hidden="true" style={{ position: 'absolute', left: 96, top: 308, width: 130, height: 10, background: COLOR.ink, borderRadius: '50%' }} />
-          <HeroGround equipment={equipment} left={86} top={300} />
+          <HeroGround equipment={equipment} hero={hero} left={86} top={300} />
           <Connectors equipment={equipment} />
           <div className={styles.heroBob} style={{ position: 'absolute', left: HERO_LEFT, top: HERO_TOP }}>
-            <HeroFigure equipment={equipment} />
+            <HeroFigure equipment={equipment} hero={hero} />
           </div>
           <ul aria-label="장착한 MCP 장비" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
             {equipment.map((slot) => (
-              <SlotBox key={slot.slot} slot={slot} />
+              <SlotBox key={slot.slot} slot={slot} hero={hero} />
             ))}
           </ul>
         </div>
@@ -160,9 +160,13 @@ export function CharacterPanel({ model }: { model: SheetModel }) {
         <h2 style={{ ...sectionLabel, margin: 0, fontWeight: 400 }}>CHARACTER</h2>
         <div style={{ fontFamily: FONT_PIXEL, fontSize: 10, color: COLOR.green }}>● ONLINE</div>
       </div>
-      <EquipStage equipment={model.equipment} />
+      <EquipStage equipment={model.equipment} hero={model.hero} />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center', textAlign: 'center' }}>
         <div style={{ fontFamily: FONT_PIXEL, fontSize: 16, color: COLOR.text, overflowWrap: 'anywhere' }}>@{model.handle}</div>
+        <div style={{ fontSize: 14, color: CLASS_BADGE[model.hero.cls] }} title={model.hero.model ?? undefined}>
+          {heroClassLabel(model.hero)}
+          {model.hero.model && <span style={{ color: COLOR.dim }}> · {model.hero.model}</span>}
+        </div>
         <div style={{ display: 'inline-block', fontSize: 14, color: COLOR.page, background: COLOR.pink, padding: '4px 10px', boxShadow: `2px 2px 0 ${COLOR.ink}` }}>
           ✦ {model.title} ✦
         </div>

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { describeError, type Diagnostics } from '../diagnostics.js';
 import { compareStrings, isMissing, isRecord } from '../fsutil.js';
 import type { ClaudeUsage } from '../types.js';
-import { dateRange, forEachLine, incr, listFilesRecursive, runPool, type Progress } from './lines.js';
+import { dateRange, forEachLine, incr, listFilesRecursive, modelKey, runPool, type Progress } from './lines.js';
 
 const TOOL_USE_MARK = Buffer.from('"tool_use"');
 const COMMAND_MARK = Buffer.from('<command-name>');
@@ -12,6 +12,16 @@ const TIMESTAMP_MARK = Buffer.from('"timestamp":"');
 const DATE_LENGTH = 10;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const COMMAND_NAME_PATTERN = /<command-name>\/?([^<\s]+)<\/command-name>/g;
+/** Assistant records open their message with the model; on 102k real lines `"message":{` sat within the first 206 bytes. */
+const MESSAGE_HEAD_BYTES = 1024;
+const MESSAGE_MARK = Buffer.from('"message":{');
+const MODEL_MARK = Buffer.from('"model":"');
+const ID_MARK = Buffer.from('"id":"');
+const CONTENT_MARK = Buffer.from('"content":');
+const QUOTE = 0x22;
+/** Placeholder model on locally generated messages (errors, interruptions); not a model the user ran. */
+const SYNTHETIC_MODEL = '<synthetic>';
+
 const FILE_CONCURRENCY = 8;
 export const PROGRESS_EVERY_FILES = 100;
 
@@ -32,6 +42,8 @@ type Accumulator = {
   skillCalls: Map<string, number>;
   slashCalls: Map<string, number>;
   agentCalls: Map<string, number>;
+  messageIds: Set<string>;
+  models: Map<string, number>;
   badLines: number;
 };
 
@@ -71,6 +83,46 @@ function countRecord(acc: Accumulator, record: unknown): void {
   }
 }
 
+/** One count per API message: a message is split over several lines (one per content block) sharing message.id. */
+function countModel(acc: Accumulator, model: string, id: string | null): void {
+  if (model === SYNTHETIC_MODEL) return;
+  if (id !== null) {
+    if (acc.messageIds.has(id)) return;
+    acc.messageIds.add(id);
+  }
+  incr(acc.models, modelKey(model));
+}
+
+function quotedAfter(line: Buffer, at: number, mark: Buffer): string | null {
+  const start = at + mark.length;
+  const end = line.indexOf(QUOTE, start);
+  return end === -1 ? null : line.toString('utf8', start, end);
+}
+
+/**
+ * Reads message.model / message.id without JSON.parse or a full-line search. Only a message object that opens with
+ * `"model":"` within the first MESSAGE_HEAD_BYTES counts (that is how assistant records are written; user and system
+ * messages open with "role"), and the id must come before `"content":`, so a `"model"` key inside tool input is never
+ * used. Other lines get a model only when they are parsed anyway (tool_use / slash-command lines).
+ */
+function fastModel(line: Buffer): { model: string; id: string | null } | null {
+  const msg = line.subarray(0, MESSAGE_HEAD_BYTES).indexOf(MESSAGE_MARK);
+  if (msg === -1) return null;
+  const model = msg + MESSAGE_MARK.length;
+  if (line.compare(MODEL_MARK, 0, MODEL_MARK.length, model, model + MODEL_MARK.length) !== 0) return null;
+  const content = line.indexOf(CONTENT_MARK, msg);
+  const id = line.indexOf(ID_MARK, msg);
+  if (content === -1 || (id !== -1 && id > content)) return null;
+  const name = quotedAfter(line, model, MODEL_MARK);
+  return name === null ? null : { model: name, id: id === -1 ? null : quotedAfter(line, id, ID_MARK) };
+}
+
+function countParsedModel(acc: Accumulator, record: unknown): void {
+  if (!isRecord(record) || record.type !== 'assistant' || !isRecord(record.message)) return;
+  const { model, id } = record.message;
+  if (typeof model === 'string') countModel(acc, model, typeof id === 'string' ? id : null);
+}
+
 function scanLine(acc: Accumulator, line: Buffer): void {
   const ts = line.indexOf(TIMESTAMP_MARK);
   if (ts !== -1) {
@@ -78,9 +130,13 @@ function scanLine(acc: Accumulator, line: Buffer): void {
     const day = line.toString('latin1', start, start + DATE_LENGTH);
     if (DATE_PATTERN.test(day)) acc.days.add(day);
   }
+  const fast = fastModel(line);
+  if (fast) countModel(acc, fast.model, fast.id);
   if (line.indexOf(TOOL_USE_MARK) === -1 && line.indexOf(COMMAND_MARK) === -1) return;
   try {
-    countRecord(acc, JSON.parse(line.toString('utf8')));
+    const record: unknown = JSON.parse(line.toString('utf8'));
+    if (fast === null) countParsedModel(acc, record);
+    countRecord(acc, record);
   } catch {
     acc.badLines += 1;
   }
@@ -110,7 +166,7 @@ export async function scanClaudeTranscripts(
   const files = await listFilesRecursive(projectsDir, '.jsonl');
   const acc: Accumulator = {
     toolIds: new Set(), days: new Set(), builtin: new Map(), mcpCalls: new Map(),
-    skillCalls: new Map(), slashCalls: new Map(), agentCalls: new Map(), badLines: 0,
+    skillCalls: new Map(), slashCalls: new Map(), agentCalls: new Map(), messageIds: new Set(), models: new Map(), badLines: 0,
   };
   let done = 0;
   await runPool(files, FILE_CONCURRENCY, async (rel) => {
@@ -132,6 +188,7 @@ export async function scanClaudeTranscripts(
       projects: await countProjectDirs(projectsDir),
       toolCalls: acc.toolIds.size,
       builtinTools: sortedRecord(acc.builtin),
+      models: sortedRecord(acc.models),
       ...dateRange(acc.days),
     },
     mcpCalls: acc.mcpCalls,

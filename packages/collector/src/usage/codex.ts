@@ -1,9 +1,9 @@
 import { isAbsolute, join, resolve } from 'node:path';
 
 import { describeError, type Diagnostics } from '../diagnostics.js';
-import { isRecord } from '../fsutil.js';
 import type { CodexUsage } from '../types.js';
-import { dateRange, forEachLine, incr, listFilesRecursive, runPool, type Progress } from './lines.js';
+import { compareStrings, isRecord } from '../fsutil.js';
+import { dateRange, forEachLine, incr, listFilesRecursive, modelKey, runPool, type Progress } from './lines.js';
 
 const ITEM_COMPLETED_MARK = Buffer.from('"item_completed"');
 const SESSION_META_MARK = Buffer.from('"session_meta"');
@@ -184,6 +184,14 @@ function scanLine(acc: Accumulator, file: FileState, line: Buffer): void {
   }
 }
 
+/** Turns per model id (validated), from interactive turns, or every turn when there are no interactive ones. */
+function modelCounts(acc: Accumulator): Record<string, number> {
+  const turns = acc.interactiveModels.turns.size > 0 ? acc.interactiveModels.turns : acc.allModels.turns;
+  const counts = new Map<string, number>();
+  for (const [model, efforts] of turns) incr(counts, modelKey(model), [...efforts.values()].reduce((a, b) => a + b, 0));
+  return Object.fromEntries([...counts].sort((a, b) => compareStrings(a[0], b[0])));
+}
+
 function pathDay(rel: string): string | null {
   const m = PATH_DATE_PATTERN.exec(rel);
   return m ? `${m[1]}-${m[2]}-${m[3]}` : null;
@@ -203,6 +211,7 @@ export async function scanCodexSessions(
     mcpTotal: 0, subagent: 0, subagentFiles: 0, execFiles: 0, commands: 0, badLines: 0,
   };
   const days = new Set(files.map(pathDay).filter((d): d is string => d !== null));
+  const interactiveDays = new Set<string>();
   let done = 0;
   await runPool(files, FILE_CONCURRENCY, async (rel) => {
     // A file without session_meta counts as interactive, as for `sessions`.
@@ -212,6 +221,7 @@ export async function scanCodexSessions(
     } catch (err) {
       diag.warn(join(sessionsDir, rel), `읽기 실패 (${describeError(err)})`);
     }
+    if (file.kind === 'interactive' && file.day) interactiveDays.add(file.day);
     done += 1;
     if (onProgress && (done % PROGRESS_EVERY_FILES === 0 || done === files.length)) onProgress(done, files.length);
   });
@@ -224,6 +234,9 @@ export async function scanCodexSessions(
       mcpCalls: acc.mcpTotal,
       subagentActivities: acc.subagent,
       commandExecutions: acc.commands,
+      models: modelCounts(acc),
+      // Days with a session a person opened; the sheet uses it to pick the main tool (exec runs are often automation).
+      interactiveDays: interactiveDays.size,
       ...dateRange(days),
     },
     mcpCalls: acc.mcpCalls,

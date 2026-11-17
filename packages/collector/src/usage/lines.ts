@@ -77,6 +77,14 @@ export function dateRange(days: ReadonlySet<string>): DateRange {
   };
 }
 
+/** Public model ids only; anything else (a custom deployment name, a path) is counted under OTHER_MODEL. */
+const MODEL_ID_PATTERN = /^[a-z0-9][a-z0-9.\-_]{0,63}$/i;
+export const OTHER_MODEL = 'other';
+
+export function modelKey(model: string): string {
+  return MODEL_ID_PATTERN.test(model) ? model : OTHER_MODEL;
+}
+
 export function incr(map: Map<string, number>, key: string, by = 1): void {
   map.set(key, (map.get(key) ?? 0) + by);
 }

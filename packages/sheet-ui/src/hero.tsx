@@ -1,7 +1,7 @@
 // The main character drawn from what is actually equipped: a bare body plus one layer per filled slot, shaped by the
 // item's rarity, and the weapon/off-hand items held as their own icons (docs/sheet-mapping.md 「본체 캐릭터」).
 import type { CSSProperties } from 'react';
-import type { EquipSlot, EquipSlotId, Rarity } from '@harness-craft/sheet';
+import { CLASS_BADGE, type EquipSlot, type EquipSlotId, type HeroInfo, type PartyClass, type Rarity } from '@harness-craft/sheet';
 
 import { PixelArt, PixelIcon } from './pixel';
 import styles from './sheet.module.css';
@@ -52,7 +52,8 @@ const ARMOR: Readonly<Record<Rarity, Piece>> = {
 
 const CAPE: Piece = {
   top: 9,
-  rows: ['....cccccccc....', '..cc........cc..', '..c..........c..', '..c..........c..', '..c..........c..', '..c..........c..', '..c..........c..', '..cc........cc..', '...cc......cc...', '....cc....cc....'],
+  rows: ['....cccccccc....', '...cccccccccc...', '..cccccccccccc..', '..cccccccccccc..', '..cccccccccccc..', '..cccccccccccc..',
+    '.cccccccccccccc.', '.cccccccccccccc.', '.cccccccccccccc.', '.cccccccccccccc.', '..cc........cc..'],
 };
 
 const BOOTS: Readonly<Record<Rarity, Piece>> = {
@@ -141,14 +142,18 @@ function Sparkles() {
 }
 
 /** Ground effect under the feet: gold aura with any legendary, a rune ring when every slot is epic or better. */
-export function HeroGround({ equipment, left, top }: { equipment: readonly EquipSlot[]; left: number; top: number }) {
+export function HeroGround({ equipment, hero, left, top }: { equipment: readonly EquipSlot[]; hero?: HeroInfo; left: number; top: number }) {
   const items = equipment.map((s) => s.item);
   const fullSet = items.every((i) => i && (i.rarity === 'epic' || i.rarity === 'legendary'));
   const legendary = items.some((i) => i?.rarity === 'legendary');
-  if (!fullSet && !legendary) return null;
+  const awakened = hero?.rank === '각성' ? CLASS_BADGE[hero.cls] : null;
+  if (!fullSet && !legendary && !awakened) return null;
   const ring: CSSProperties = { position: 'absolute', left, top, width: 150, height: 22 };
   return (
     <div aria-hidden="true" style={ring}>
+      {awakened && (
+        <div className={styles.fxAura} style={{ inset: '-14px -18px', background: `radial-gradient(ellipse at center, ${awakened}99 0, ${awakened}26 55%, transparent 72%)` }} />
+      )}
       {legendary && <div className={styles.fxAura} />}
       {fullSet && <div className={styles.fxRunes} />}
     </div>
@@ -184,7 +189,7 @@ function crop(rows: Rows, slot: keyof typeof CROP): Rows {
 }
 
 /** The hero's body part wearing this slot's piece, sized to fit `box` px. Null for held slots (they show the MCP icon). */
-export function WornPiece({ slot, rarity, box }: { slot: EquipSlotId; rarity: Rarity; box: number }) {
+export function WornPiece({ slot, rarity, box, hero }: { slot: EquipSlotId; rarity: Rarity; box: number; hero?: HeroInfo }) {
   if (slot === 'weapon' || slot === 'offhand') return null;
   const { piece, pal } = pieceFor(slot, rarity);
   const body = crop(BODY, slot);
@@ -194,7 +199,7 @@ export function WornPiece({ slot, rarity, box }: { slot: EquipSlotId; rarity: Ra
   return (
     <div style={{ position: 'relative', width: (CROP_RIGHT - CROP_LEFT) * scale, height: body.length * scale }}>
       <div style={{ position: 'absolute', inset: 0 }}>
-        <PixelArt rows={body} scale={scale} pal={BODY_PAL} />
+        <PixelArt rows={body} scale={scale} pal={bodyPalette(hero)} />
       </div>
       <div className={effectClass(rarity)} style={{ position: 'absolute', inset: 0 }}>
         <PixelArt rows={worn} scale={scale} pal={pal} />
@@ -203,8 +208,72 @@ export function WornPiece({ slot, rarity, box }: { slot: EquipSlotId; rarity: Ra
   );
 }
 
+/* ---- Class outfit (main model) and rank (level) ---- */
+
+type ClassLook = {
+  /** Overrides of BODY_PAL plus colours used by this class's pieces. */
+  pal: Palette;
+  /** Worn from 정식 on, only when the helmet slot is empty. */
+  head: Piece | null;
+  /** Always worn from 정식 on (robe skirt, mask, beard). */
+  marks: readonly Piece[];
+};
+
+const ROBE_SKIRT: Piece = { top: 15, rows: ['....CCCCCCCC....', '....CCCCCCCC....', '...CCCCCCCCCC...', '...CCCCCCCCCC...'] };
+const HOOD: Piece = { top: 2, rows: ['.....OOOOOO.....', '....OOOOOOOO....', '...OO......OO...', '...O........O...'] };
+
+const CLASS_LOOK: Readonly<Record<PartyClass, ClassLook>> = {
+  마법사: {
+    pal: { C: '#4b3bbf', P: '#2e2470', W: '#4b3bbf', w: '#6a5ae0', y: '#ffc23d' },
+    head: { top: 0, rows: ['.......WW.......', '......WwWW......', '.....WWyWWW.....', '....WWWWwWWW....', '..WWWWWWWWWWWW..'] },
+    marks: [ROBE_SKIRT],
+  },
+  궁수: {
+    pal: { C: '#2f8f5f', P: '#5a3a20', O: '#1f6b45', q: '#7a5230' },
+    head: HOOD,
+    marks: [{ top: 9, rows: ['..........q.....', '.........q......', '........q.......', '.......q........'] }],
+  },
+  도적: {
+    pal: { C: '#2a2a3a', P: '#1a1a26', O: '#3a3550', M: '#3a3550' },
+    head: HOOD,
+    marks: [{ top: 7, rows: ['....MMMMMMMM....'] }],
+  },
+  현자: {
+    pal: { C: '#e8e2d0', P: '#b8ad90', h: '#f6f1e6', B: '#f6f1e6', y: '#ffc23d' },
+    head: { top: 2, rows: ['.....yyyyyy.....'] },
+    marks: [ROBE_SKIRT, { top: 7, rows: ['....BBBBBBBB....', '.....BBBBBB.....', '......BBBB......'] }],
+  },
+  전사: {
+    pal: { C: '#b8323f', P: '#4a4458', R: '#d6324a' },
+    head: { top: 3, rows: ['....RRRRRRRR....', '............RR..'] },
+    marks: [],
+  },
+};
+
+/** Diagonal sash in the second class's colour (both tools used). */
+const SASH: Piece = { top: 9, rows: ['....ss..........', '.....ss.........', '......ss........', '.......ss.......', '........ss......', '.........ss.....'] };
+
+/** Capes use a darker shade of the class colour so they sit behind the outfit. */
+function shade(hex: string, factor: number): string {
+  const n = Number.parseInt(hex.slice(1), 16);
+  const ch = (shift: number) => Math.round(((n >> shift) & 0xff) * factor).toString(16).padStart(2, '0');
+  return `#${ch(16)}${ch(8)}${ch(0)}`;
+}
+
+function bodyPalette(hero: HeroInfo | undefined): Palette {
+  if (!hero || hero.rank === '견습') return BODY_PAL;
+  const look = CLASS_LOOK[hero.cls];
+  const pal: Record<string, string> = { ...BODY_PAL, ...look.pal };
+  if (hero.rank === '각성') pal.K = CLASS_BADGE[hero.cls];
+  return pal;
+}
+
+export function heroClassLabel(hero: HeroInfo): string {
+  return hero.secondary ? `${hero.rank} ${hero.cls} / ${hero.secondary}` : `${hero.rank} ${hero.cls}`;
+}
+
 /** Hero box is 192×264 px (16×22 cells at scale 12). Parent positions it and applies the idle bob. */
-export function HeroFigure({ equipment }: { equipment: readonly EquipSlot[] }) {
+export function HeroFigure({ equipment, hero }: { equipment: readonly EquipSlot[]; hero?: HeroInfo }) {
   const bySlot = new Map(equipment.map((s) => [s.slot, s] as const));
   const tier = (id: EquipSlotId): Rarity | null => bySlot.get(id)?.item?.rarity ?? null;
   const helmet = tier('helmet');
@@ -212,16 +281,29 @@ export function HeroFigure({ equipment }: { equipment: readonly EquipSlot[] }) {
   const boots = tier('boots');
   const accessory = tier('accessory');
   const legendary = equipment.some((s) => s.item?.rarity === 'legendary');
+  const dressed = hero !== undefined && hero.rank !== '견습';
+  const look = dressed ? CLASS_LOOK[hero.cls] : null;
+  const bodyPal = bodyPalette(hero);
+  const classCape = hero && (hero.rank === '숙련' || hero.rank === '각성') ? shade(CLASS_BADGE[hero.cls], 0.55) : null;
+  const secondaryColor = dressed && hero.secondary ? CLASS_BADGE[hero.secondary] : null;
+  const label = hero ? `${heroClassLabel(hero)}, ${heroLabel(equipment)}` : heroLabel(equipment);
   return (
-    <div role="img" aria-label={heroLabel(equipment)} style={{ position: 'relative', width: GRID_W * HERO_SCALE, height: GRID_H * HERO_SCALE }}>
-      {armor === 'legendary' && <Layer rows={place(CAPE)} pal={TIER_PAL.legendary} />}
-      <Layer rows={BODY} pal={BODY_PAL} />
+    <div role="img" aria-label={label} style={{ position: 'relative', width: GRID_W * HERO_SCALE, height: GRID_H * HERO_SCALE }}>
+      {armor === 'legendary' ? (
+        <Layer rows={place(CAPE)} pal={TIER_PAL.legendary} />
+      ) : (
+        classCape && <Layer rows={place(CAPE)} pal={{ c: classCape }} />
+      )}
+      <Layer rows={BODY} pal={bodyPal} />
+      {look?.marks.map((m, i) => <Layer key={i} rows={place(m)} pal={bodyPal} />)}
       {boots && <Layer rows={place(BOOTS[boots])} pal={TIER_PAL[boots]} rarity={boots} />}
       {armor && <Layer rows={place(ARMOR[armor])} pal={TIER_PAL[armor]} rarity={armor} />}
       {accessory && (
         <Layer rows={place(AMULET)} pal={{ y: '#ffc23d', g: RARITY[accessory].color }} rarity={accessory} />
       )}
       {helmet && <Layer rows={place(HELMET[helmet])} pal={TIER_PAL[helmet]} rarity={helmet} />}
+      {!helmet && look?.head && <Layer rows={place(look.head)} pal={bodyPal} />}
+      {secondaryColor && <Layer rows={place(SASH)} pal={{ s: secondaryColor }} />}
       {equipment.map((slot) => (
         <Held key={slot.slot} slot={slot} />
       ))}
