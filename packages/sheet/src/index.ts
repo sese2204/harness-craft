@@ -9,7 +9,7 @@ import type { HiddenKind, Origin, SheetModel, Visibility } from './types.js';
 
 export * from './types.js';
 export { hashName, pickByHash } from './hash.js';
-export { assignRarity } from './rank.js';
+export { MCP_RARITY, SKILL_RARITY, rarityFor, type RarityThresholds } from './rank.js';
 export { hookKey } from './merge.js';
 export { EQUIP_SLOTS, ICON_NAMES, INVENTORY_SIZE, mcpIcon } from './items.js';
 export { PARTY_SIZE, PASSIVE_SIZE, roleBadge, partyClass } from './party.js';

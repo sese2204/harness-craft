@@ -157,14 +157,15 @@ test('non-priority events fill remaining passive slots', () => {
   ]);
 });
 
-test('hidden items are removed before ranking, rarity and stats', () => {
+test('hidden items are removed before slot order and stats; rarity stays absolute', () => {
   const base = toSheet(rich(), visibility());
   const hidden = toSheet(
     rich(),
     visibility({ hidden: { mcp: ['github'], skills: ['skill-11'], agents: ['opus-reviewer'], hooks: [hookKey(hook('Stop'))] } }),
   );
   assert.equal(hidden.equipment[0]?.item?.name, 'notion');
-  assert.equal(hidden.equipment[0]?.item?.rarity, 'legendary');
+  // Rarity is absolute (call count), so hiding github moves notion up a slot but doesn't promote it.
+  assert.equal(hidden.equipment[0]?.item?.rarity, base.equipment[1]?.item?.rarity);
   assert.ok(hidden.equipment.every((s) => s.item?.name !== 'github'));
   assert.equal(hidden.skills.total, 11);
   assert.ok(hidden.skills.shown.every((s) => s.name !== 'skill-11'));

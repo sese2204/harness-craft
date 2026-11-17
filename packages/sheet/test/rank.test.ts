@@ -1,48 +1,27 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { assignRarity } from '../src/rank.js';
+import { MCP_RARITY, SKILL_RARITY, rarityFor, sortByCount } from '../src/rank.js';
 
-const tiersOf = (counts: readonly number[]): string[] => {
-  const items = counts.map((count, i) => ({ name: `item-${String(i).padStart(2, '0')}`, count }));
-  const tiers = assignRarity(items);
-  return items.map((item) => tiers.get(item.name) as string);
-};
-
-const tally = (tiers: readonly string[]): Record<string, number> =>
-  tiers.reduce<Record<string, number>>((acc, t) => ({ ...acc, [t]: (acc[t] ?? 0) + 1 }), {});
-
-test('a single used item is legendary (max(1, round(n*0.1)))', () => {
-  assert.deepEqual(tiersOf([3]), ['legendary']);
+test('MCP rarity uses absolute call counts: <50 common, 50 rare, 300 epic, 1000 legendary', () => {
+  const tiers = [0, 49, 50, 299, 300, 999, 1000, 50_000].map((c) => rarityFor(c, MCP_RARITY));
+  assert.deepEqual(tiers, ['common', 'common', 'rare', 'rare', 'epic', 'epic', 'legendary', 'legendary']);
 });
 
-test('n=3 → 1 legendary, round(0.6)=1 epic, round(0.9)=1 rare', () => {
-  assert.deepEqual(tiersOf([30, 20, 10]), ['legendary', 'epic', 'rare']);
+test('skill rarity uses absolute use counts: <5 common, 5 rare, 30 epic, 100 legendary', () => {
+  const tiers = [0, 4, 5, 29, 30, 99, 100].map((c) => rarityFor(c, SKILL_RARITY));
+  assert.deepEqual(tiers, ['common', 'common', 'rare', 'rare', 'epic', 'epic', 'legendary']);
 });
 
-test('n=5 → 1/1/2/1 (round half up)', () => {
-  assert.deepEqual(tally(tiersOf([50, 40, 30, 20, 10])), { legendary: 1, epic: 1, rare: 2, common: 1 });
+test('a lone low-use item is not legendary (no rank-based floor)', () => {
+  assert.equal(rarityFor(3, MCP_RARITY), 'common');
 });
 
-test('n=10 → 1/2/3/4 and n=20 → 2/4/6/8', () => {
-  assert.deepEqual(tally(tiersOf(Array.from({ length: 10 }, (_, i) => 100 - i))), { legendary: 1, epic: 2, rare: 3, common: 4 });
-  assert.deepEqual(tally(tiersOf(Array.from({ length: 20 }, (_, i) => 100 - i))), { legendary: 2, epic: 4, rare: 6, common: 8 });
-});
-
-test('unused items are always common and do not count toward n', () => {
-  // n=2 used → 1 legendary, round(0.4)=0 epic, round(0.6)=1 rare.
-  assert.deepEqual(tiersOf([0, 5, 9, 0]), ['common', 'rare', 'legendary', 'common']);
-});
-
-test('ties are broken by name ascending', () => {
-  const tiers = assignRarity([
+test('sortByCount orders by count descending, ties by name ascending', () => {
+  const sorted = sortByCount([
     { name: 'beta', count: 10 },
     { name: 'alpha', count: 10 },
+    { name: 'gamma', count: 20 },
   ]);
-  assert.equal(tiers.get('alpha'), 'legendary');
-  assert.equal(tiers.get('beta'), 'rare');
-});
-
-test('empty input yields an empty map', () => {
-  assert.equal(assignRarity([]).size, 0);
+  assert.deepEqual(sorted.map((s) => s.name), ['gamma', 'alpha', 'beta']);
 });

@@ -1,6 +1,6 @@
 {
   "name": "harness-craft",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Turn your Claude Code and Codex harness (MCP, skills, hooks, subagents) into a pixel-RPG character sheet HTML. No network.",
   "keywords": [
     "claude-code",

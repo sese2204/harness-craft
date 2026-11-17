@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { EquipSlot, EquipSlotId, SheetModel } from '@harness-craft/sheet';
 
-import { HERO_EQ, HERO_PAL, PixelArt, PixelIcon } from './pixel';
+import { HERO_ANCHORS, HeroFigure, HeroGround, WornPiece } from './hero';
+import { PixelIcon } from './pixel';
 import styles from './sheet.module.css';
 import { COLOR, FONT_PIXEL, RARITY, formatNumber, formatUses, sectionLabel } from './theme';
 
@@ -11,15 +12,25 @@ const STAGE_W = 328;
 const STAGE_H = 400;
 const EMPTY_SLOT_COLOR = COLOR.border;
 
-/** x,y = slot box in the 328×400 stage; tx,ty = body point the connector targets (design EQUIP table). */
-const SLOT_POS: Readonly<Record<EquipSlotId, { x: number; y: number; tx: number; ty: number }>> = {
-  armor: { x: 6, y: 16, tx: 143, ty: 152 },
-  offhand: { x: 6, y: 150, tx: 89, ty: 190 },
-  boots: { x: 6, y: 284, tx: 125, ty: 286 },
-  helmet: { x: 252, y: 16, tx: 197, ty: 64 },
-  accessory: { x: 252, y: 150, tx: 179, ty: 142 },
-  weapon: { x: 252, y: 284, tx: 239, ty: 112 },
+/** Hero box position in the 328×400 stage. */
+const HERO_LEFT = 65;
+const HERO_TOP = 64;
+
+/** x,y = slot box in the stage; tx,ty = body point the connector targets (the worn piece, see hero.tsx). */
+const SLOT_BOX: Readonly<Record<EquipSlotId, { x: number; y: number }>> = {
+  armor: { x: 6, y: 16 },
+  offhand: { x: 6, y: 150 },
+  boots: { x: 6, y: 284 },
+  helmet: { x: 252, y: 16 },
+  accessory: { x: 252, y: 150 },
+  weapon: { x: 252, y: 284 },
 };
+const SLOT_POS = Object.fromEntries(
+  Object.entries(SLOT_BOX).map(([id, box]) => {
+    const anchor = HERO_ANCHORS[id as EquipSlotId];
+    return [id, { ...box, tx: HERO_LEFT + anchor.x, ty: HERO_TOP + anchor.y }];
+  }),
+) as Readonly<Record<EquipSlotId, { x: number; y: number; tx: number; ty: number }>>;
 
 /** Scales the fixed-coordinate stage down when the panel is narrower than 328px. */
 function useFitScale(width: number) {
@@ -71,6 +82,20 @@ function Connectors({ equipment }: { equipment: readonly EquipSlot[] }) {
   );
 }
 
+/** Worn slots show the piece on the body (crown, horned helm…) with the MCP's own icon as a corner badge. */
+function SlotImage({ slot }: { slot: EquipSlot }) {
+  if (!slot.item) return null;
+  if (slot.slot === 'weapon' || slot.slot === 'offhand') return <PixelIcon name={slot.item.icon} scale={5} />;
+  return (
+    <>
+      <WornPiece slot={slot.slot} rarity={slot.item.rarity} box={50} />
+      <span style={{ position: 'absolute', right: 2, bottom: 2, lineHeight: 0, background: COLOR.ink, padding: 1 }}>
+        <PixelIcon name={slot.item.icon} scale={2} />
+      </span>
+    </>
+  );
+}
+
 function SlotBox({ slot }: { slot: EquipSlot }) {
   const p = SLOT_POS[slot.slot];
   const color = slotColor(slot);
@@ -83,7 +108,9 @@ function SlotBox({ slot }: { slot: EquipSlot }) {
       title={slotTitle(slot)}
       style={{ position: 'absolute', left: p.x, top: p.y, width: 64, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}
     >
-      <div style={box}>{slot.item && <PixelIcon name={slot.item.icon} scale={5} />}</div>
+      <div style={{ ...box, position: 'relative' }}>
+        {slot.item && <SlotImage slot={slot} />}
+      </div>
       <div
         className={styles.equipLabel}
         style={{ fontSize: 12, color: slot.item ? COLOR.soft : COLOR.dim, textAlign: 'center', lineHeight: 1.1, whiteSpace: 'nowrap' }}
@@ -108,9 +135,10 @@ function EquipStage({ equipment }: { equipment: readonly EquipSlot[] }) {
         >
           <div aria-hidden="true" style={{ position: 'absolute', left: 0, right: 0, top: 322, height: 3, background: COLOR.grid }} />
           <div aria-hidden="true" style={{ position: 'absolute', left: 96, top: 308, width: 130, height: 10, background: COLOR.ink, borderRadius: '50%' }} />
+          <HeroGround equipment={equipment} left={86} top={300} />
           <Connectors equipment={equipment} />
-          <div style={{ position: 'absolute', left: 65, top: 40, animation: 'bob 1.6s steps(2) infinite' }}>
-            <PixelArt rows={HERO_EQ} scale={12} pal={HERO_PAL} />
+          <div className={styles.heroBob} style={{ position: 'absolute', left: HERO_LEFT, top: HERO_TOP }}>
+            <HeroFigure equipment={equipment} />
           </div>
           <ul aria-label="장착한 MCP 장비" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
             {equipment.map((slot) => (

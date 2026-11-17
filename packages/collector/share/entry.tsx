@@ -2,12 +2,57 @@
 // Hiding items and blanking descriptions already happened in the CLI, so everything in the data is drawn.
 import '@harness-craft/sheet-ui/base.css';
 
-import { StrictMode } from 'react';
+import { StrictMode, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { parseProfile, toSheet, type HarnessProfile, type Visibility } from '@harness-craft/sheet';
 import { CharacterSheet } from '@harness-craft/sheet-ui';
 
 import { SHARE_DATA_ID, SHARE_ROOT_ID } from '../src/shareFormat.js';
+
+/** The sheet is laid out at this width (3 columns) and scaled to the window, so it reads as one screen. */
+const DESIGN_WIDTH = 1440;
+/** Below this window width the sheet keeps its own stacked mobile layout instead of shrinking. */
+const FIT_MIN_VIEWPORT = 600;
+/** Fitting the height too would make text smaller than this scale; then only the width is fitted and the page scrolls. */
+const MIN_HEIGHT_FIT_SCALE = 0.55;
+
+function FitToScreen({ children }: { children: ReactNode }) {
+  const inner = useRef<HTMLDivElement>(null);
+  const [fit, setFit] = useState(() => document.documentElement.clientWidth >= FIT_MIN_VIEWPORT);
+  const [box, setBox] = useState({ scale: 1, height: 0 });
+
+  useLayoutEffect(() => {
+    const update = () => {
+      const vw = document.documentElement.clientWidth;
+      const nextFit = vw >= FIT_MIN_VIEWPORT;
+      setFit(nextFit);
+      document.body.classList.toggle('fit', nextFit);
+      const el = inner.current;
+      if (!nextFit || !el) return;
+      const height = el.offsetHeight;
+      const byWidth = Math.min(1, vw / DESIGN_WIDTH);
+      const byBoth = Math.min(byWidth, window.innerHeight / height);
+      setBox({ scale: byBoth >= MIN_HEIGHT_FIT_SCALE ? byBoth : byWidth, height });
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    if (inner.current) observer.observe(inner.current);
+    window.addEventListener('resize', update);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, [fit]);
+
+  if (!fit) return <>{children}</>;
+  return (
+    <div style={{ width: DESIGN_WIDTH * box.scale, height: box.height * box.scale, margin: '0 auto', overflow: 'hidden' }}>
+      <div ref={inner} style={{ width: DESIGN_WIDTH, padding: '24px 28px', boxSizing: 'border-box', transform: `scale(${box.scale})`, transformOrigin: 'top left' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 const NOTHING_HIDDEN: Visibility['hidden'] = { mcp: [], skills: [], agents: [], hooks: [] };
 
@@ -35,7 +80,9 @@ function render(container: HTMLElement): void {
     document.title = `@${model.handle} · DEV.QUEST`;
     createRoot(container).render(
       <StrictMode>
-        <CharacterSheet model={model} scanlines={false} share={null} />
+        <FitToScreen>
+          <CharacterSheet model={model} scanlines={false} share={null} />
+        </FitToScreen>
       </StrictMode>,
     );
   } catch (error: unknown) {

@@ -3,7 +3,7 @@ import type { Source } from '@harness-craft/schema';
 
 import { pickByHash } from './hash.js';
 import type { MergedMcp, MergedSkill } from './merge.js';
-import { assignRarity, sortByCount } from './rank.js';
+import { MCP_RARITY, SKILL_RARITY, rarityFor, sortByCount } from './rank.js';
 import type { EquipSlot, EquipSlotId, IconName, SkillCard } from './types.js';
 
 export const ICON_NAMES: readonly IconName[] = [
@@ -39,7 +39,6 @@ export function mcpIcon(name: string): IconName {
 }
 
 export function buildEquipment(mcp: readonly MergedMcp[], showDescriptions: boolean): EquipSlot[] {
-  const tiers = assignRarity(mcp.map((m) => ({ name: m.name, count: m.calls })));
   const top = sortByCount(mcp.map((m) => ({ ...m, count: m.calls }))).slice(0, EQUIP_SLOTS.length);
   return EQUIP_SLOTS.map(({ slot, label }, index) => {
     const m = top[index];
@@ -50,7 +49,7 @@ export function buildEquipment(mcp: readonly MergedMcp[], showDescriptions: bool
       item: {
         name: m.name,
         icon: mcpIcon(m.name),
-        rarity: tiers.get(m.name) ?? 'common',
+        rarity: rarityFor(m.calls, MCP_RARITY),
         calls: m.calls,
         desc: showDescriptions ? m.desc : '',
         origins: [...m.origins],
@@ -67,13 +66,12 @@ export function acquiredLabel(sources: readonly Source[]): string {
 }
 
 export function buildInventory(skills: readonly MergedSkill[], showDescriptions: boolean): SkillCard[] {
-  const tiers = assignRarity(skills.map((s) => ({ name: s.name, count: s.uses })));
   return sortByCount(skills.map((s) => ({ ...s, count: s.uses })))
     .slice(0, INVENTORY_SIZE)
     .map((s) => ({
       name: s.name,
       icon: pickByHash(s.name, ICON_NAMES),
-      rarity: tiers.get(s.name) ?? 'common',
+      rarity: rarityFor(s.uses, SKILL_RARITY),
       uses: s.uses,
       desc: showDescriptions ? s.desc : '',
       acquired: acquiredLabel(s.sources),

@@ -64,6 +64,7 @@ function pageCss(fonts) {
 *,*::before,*::after{box-sizing:border-box}
 html,body{margin:0;padding:0;background:${PAGE_BACKGROUND};color:#f3eee2;font-family:var(--font-neodgm),var(--font-press-start),monospace;-webkit-font-smoothing:none}
 body{min-height:100vh;padding:28px max(16px,env(safe-area-inset-right)) 48px max(16px,env(safe-area-inset-left));background-color:${PAGE_BACKGROUND};background-image:radial-gradient(${PAGE_DOTS} 1.5px,transparent 1.5px);background-size:10px 10px;image-rendering:pixelated}
+body.fit{padding:0}
 a{color:#ffc23d;text-decoration:none}
 a:focus-visible,button:focus-visible{outline:3px solid #f3eee2;outline-offset:3px}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important}}

@@ -6,9 +6,17 @@ export interface Counted {
   count: number;
 }
 
-const LEGENDARY_SHARE = 0.1;
-const EPIC_SHARE = 0.2;
-const RARE_SHARE = 0.3;
+/** Minimum count for rare / epic / legendary. Absolute, so a tier means the same thing on everyone's sheet. */
+export interface RarityThresholds {
+  rare: number;
+  epic: number;
+  legendary: number;
+}
+
+/** MCP calls (equipment). */
+export const MCP_RARITY: RarityThresholds = { rare: 50, epic: 300, legendary: 1000 };
+/** Skill uses (inventory). */
+export const SKILL_RARITY: RarityThresholds = { rare: 5, epic: 30, legendary: 100 };
 
 /** Locale-independent name comparison so the order never depends on the runtime. */
 export function compareNames(a: string, b: string): number {
@@ -25,19 +33,9 @@ export function sortByCount<T extends Counted>(items: readonly T[]): T[] {
   return [...items].sort(byCountThenName);
 }
 
-/**
- * Items with count >= 1 are ranked; the top max(1, round(n*0.1)) are legendary, the next round(n*0.2) epic,
- * the next round(n*0.3) rare and the rest common. Unused items are always common.
- */
-export function assignRarity(items: readonly Counted[]): Map<string, Rarity> {
-  const used = sortByCount(items.filter((item) => item.count >= 1));
-  const n = used.length;
-  const legendary = Math.max(1, Math.round(n * LEGENDARY_SHARE));
-  const epic = legendary + Math.round(n * EPIC_SHARE);
-  const rare = epic + Math.round(n * RARE_SHARE);
-  const tiers = new Map<string, Rarity>(items.map((item) => [item.name, 'common']));
-  used.forEach((item, index) => {
-    tiers.set(item.name, index < legendary ? 'legendary' : index < epic ? 'epic' : index < rare ? 'rare' : 'common');
-  });
-  return tiers;
+export function rarityFor(count: number, thresholds: RarityThresholds): Rarity {
+  if (count >= thresholds.legendary) return 'legendary';
+  if (count >= thresholds.epic) return 'epic';
+  if (count >= thresholds.rare) return 'rare';
+  return 'common';
 }

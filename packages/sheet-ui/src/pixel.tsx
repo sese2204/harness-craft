@@ -24,21 +24,6 @@ export const ICONS: Readonly<Record<IconName, readonly string[]>> = {
 
 const HERO = ['..HHHH..', '.HHHHHH.', '.HSSSSH.', '.SKSSKS.', '.SSSSSS.', '..CCCC..', '.CCCCCC.', '.CSCCSC.', '..PPPP..', '..P..P..'];
 
-// Equipped hero, 16x22: H helmet A armor N scarf B boots W blade D shield.
-export const HERO_EQ = [
-  '.....HHHHHH.....', '....HHHHHHHH....', '...HHhHHHHHHH...', '...HHHHHHHHHH...',
-  '...HSSSSSSSSH.W.', '...SSKKSSKKSS.W.', '...SSSSSSSSSS.W.', '....SSRSSRSS..W.',
-  '.....NNNNNN...W.', '..DD.AAANNAAA.W.', '.DEEDAAAAAAAAGGG', 'DEEEDAAAAAAAASTS',
-  'DEEEDSAAAAAAA.T.', 'DEEEDSAAAAAAA...', '.DEEDAAAAAAAA...', '..DD.AAAAAAA....',
-  '.....PPPPPPP....', '.....PPP.PPP....', '.....PPP.PPP....', '.....BBB.BBB....',
-  '....BBBB.BBBB...', '....BBBB.BBBB...',
-];
-
-export const HERO_PAL: Palette = {
-  H: '#ffc23d', h: '#fff3c4', S: '#f2c9a0', K: '#1a1626', R: '#ff9ad0', N: '#9aa3ad', A: '#3b9cff',
-  D: '#2f6fd6', E: '#8fd0ff', G: '#ffc23d', T: '#7a5230', W: '#b05cff', P: '#1f3f7a', B: '#9aa3ad',
-};
-
 interface PixelArtProps {
   rows: readonly string[];
   scale: number;

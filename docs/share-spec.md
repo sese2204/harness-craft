@@ -67,6 +67,12 @@ CLI 는 템플릿을 `new URL('./share-template.html', import.meta.url)` 로 읽
 React·`@harness-craft/sheet`·`@harness-craft/sheet-ui`·esbuild 는 collector 의 devDependencies 다.
 번들이 템플릿에 들어가므로 런타임 의존성은 `yaml`, `smol-toml` 둘뿐이다.
 
+## 화면 맞춤
+
+창 폭이 600px 이상이면 시트를 폭 1440px(3열 배치)로 그린 뒤 창에 맞게 줄여, 시트 전체가 한 화면에 들어오게 한다.
+높이까지 맞추면 배율이 0.55 아래로 내려갈 때는 폭만 맞추고 세로로 스크롤한다. 600px 미만(휴대폰)에서는 줄이지 않고
+시트의 세로 배치를 그대로 쓴다. 구현은 `packages/collector/share/entry.tsx` 의 `FitToScreen` 이다.
+
 ## 폰트
 
 `packages/sheet-ui/fonts/` 에 둔다. 둘 다 SIL OFL 1.1 이고 라이선스 파일을 같이 둔다.
