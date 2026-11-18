@@ -19,6 +19,8 @@ export type CollectOptions = {
   /** Pi session directory ($PI_CODING_AGENT_SESSION_DIR). Default: settings.json `sessionDir`, else <piAgentDir>/sessions. */
   piSessionDir?: string;
   usage: boolean;
+  /** Subscription plans (Claude, ChatGPT for Codex). Default true; false leaves both null (`--no-plan`). */
+  plan?: boolean;
   now?: () => Date;
   onProgress?: (label: string) => Progress;
 };
@@ -42,8 +44,9 @@ export async function collectProfile(options: CollectOptions): Promise<HarnessPr
   const ctx: ScanContext = {
     home: options.home, codexHome, piAgentDir, piSessionDir: options.piSessionDir ?? null, redactor, diag, onProgress: options.onProgress,
   };
-  const claude = await collectClaudeCode(ctx, { usage: options.usage });
-  const codex = await collectCodex(ctx, { usage: options.usage });
+  const plan = options.plan ?? true;
+  const claude = await collectClaudeCode(ctx, { usage: options.usage, plan });
+  const codex = await collectCodex(ctx, { usage: options.usage, plan });
   const pi = await collectPi(ctx, { usage: options.usage });
   return {
     schemaVersion: 1,

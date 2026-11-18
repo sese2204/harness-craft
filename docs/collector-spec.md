@@ -9,13 +9,15 @@
 2. **허용 목록 방식으로 고른다.** 원본 객체를 복사한 뒤 지우는 방식이 아니라, 필요한 필드만 골라 새 객체를 만든다.
 3. **읽지 않는 파일:** `~/.codex/auth.json`, `~/.claude/.credentials.json`, `*.sqlite*`, `history.jsonl`, `session-env/`, `shell-snapshots/`,
    Pi 의 `auth.json`·`mcp-auth.json`·`models.json`(`apiKey` 가 들어 있을 수 있음).
+   `~/.claude.json` 의 `oauthAccount` 에서는 `organizationType`·`planDisplayName` 두 필드만 읽고, 정해 둔 등급 값으로 바꾼 것만 쓴다.
+   이메일·이름·조직 이름·uuid 는 읽지도 옮기지도 않는다. 아래 「구독 등급」.
 4. 파일이 없거나 깨져 있으면 그 항목만 비우고 계속 간다. 경고는 `warnings[]` 에 남긴다(경로는 `~` 로 줄여서).
 5. 결과는 결정적이어야 한다. 배열은 이름순(사용량이 있는 배열도 이름순, 정렬은 화면이 한다).
 
 ## 명령
 
 ```
-harness-craft [scan] [--out <file>] [--json] [--no-usage] [--home <dir>]
+harness-craft [scan] [--out <file>] [--json] [--no-usage] [--no-plan] [--home <dir>]
 ```
 
 | 옵션 | 동작 |
@@ -23,7 +25,8 @@ harness-craft [scan] [--out <file>] [--json] [--no-usage] [--home <dir>]
 | (없음) | 스캔 → 사람이 읽는 요약을 stderr 에 출력 → `./harness-profile.json` 에 저장 |
 | `--out <file>` | 저장 위치 변경 |
 | `--json` | JSON 을 stdout 으로만 내보내고 파일은 쓰지 않음. 요약·진행률은 stderr |
-| `--no-usage` | 대화 기록 집계(느린 부분)를 건너뜀. `usage` 는 `null` |
+| `--no-usage` | 대화 기록 집계(느린 부분)를 건너뜀. `usage` 는 `null`. Codex 구독 등급도 세션 기록에서 읽으므로 `null` |
+| `--no-plan` | 구독 등급(Claude·ChatGPT)을 담지 않음. `claudeCode.plan`·`codex.plan` 이 `null` 이고 `oauthAccount` 는 보지 않음 |
 | `--home <dir>` | 홈 디렉터리 대신 쓸 경로(테스트·디버그용). `~/.claude`, `~/.claude.json`, `~/.codex`, `~/.agents`, `~/.pi/agent` 를 여기서 찾음. 주면 `$CODEX_HOME`, `$PI_CODING_AGENT_DIR`, `$PI_CODING_AGENT_SESSION_DIR` 는 무시 |
 
 Codex 경로는 모두 `$CODEX_HOME`(없거나 비면 `~/.codex`) 아래에서 찾는다. 아래 `~/.codex` 는 이 디렉터리를 말한다.
@@ -32,7 +35,8 @@ Codex 경로는 모두 `$CODEX_HOME`(없거나 비면 `~/.codex`) 아래에서 �
 Pi 경로는 모두 `$PI_CODING_AGENT_DIR`(없거나 비면 `~/.pi/agent`, 앞의 `~/` 는 홈으로 바꿈) 아래에서 찾는다. 아래 `<agent-dir>` 은 이 디렉터리다.
 `$PI_CODING_AGENT_SESSION_DIR` 가 있으면 세션 폴더로 함께 읽는다. CLI 가 둘을 읽어 `piAgentDir`·`piSessionDir` 로 넘긴다.
 
-요약 마지막 줄에 "아무것도 업로드하지 않았습니다" 를 반드시 쓴다.
+요약 마지막 줄에 "아무것도 업로드하지 않았습니다" 를 반드시 쓴다. 구독 등급은 한 줄로 알린다:
+`구독: Claude Max · ChatGPT Pro (--no-plan 으로 뺌)`, 찾은 것이 없으면 `구독: 확인 못 함 (--no-plan 으로 뺌)`, `--no-plan` 이면 `구독: 뺌 (--no-plan)`.
 
 혼자 열리는 시트 HTML 을 만드는 `share` 명령도 있다. [share-spec.md](./share-spec.md) 참고.
 
@@ -62,6 +66,7 @@ type ClaudeCodeSource = {
   plugins: Plugin[];
   commands: Command[];                 // ~/.claude/commands/**/*.md
   instructions: Instructions;          // ~/.claude/CLAUDE.md
+  plan?: ClaudePlan | null;            // 아래 「구독 등급」. 수집기는 늘 쓴다. 예전 파일에는 없을 수 있음
   usage: ClaudeUsage | null;
 };
 
@@ -76,6 +81,7 @@ type CodexSource = {
   rulesFiles: number;                  // ~/.codex/rules/* 개수만
   agents?: Agent[];                    // 아래 「Codex 에이전트」. 수집기는 늘 쓴다. 예전 파일에는 없을 수 있어 선택 필드
   plugins?: Plugin[];                  // 아래 「Codex 플러그인」. 수집기는 늘 쓴다. 예전 파일에는 없을 수 있어 선택 필드
+  plan?: CodexPlan | null;             // 아래 「구독 등급」. 수집기는 늘 쓴다. 예전 파일에는 없을 수 있음
   usage: CodexUsage | null;
 };
 
@@ -126,6 +132,8 @@ type Hook = {
 type Plugin = { name: string; marketplace: string; version: string | null; enabled: boolean; uses: number };
 type Command = { name: string; description: string };
 type Instructions = { present: boolean; lines: number; bytes: number };   // 본문은 절대 내보내지 않음
+type ClaudePlan = 'free' | 'pro' | 'max' | 'team' | 'enterprise';
+type CodexPlan = 'free' | 'go' | 'plus' | 'pro' | 'team' | 'business' | 'enterprise' | 'edu';   // ChatGPT 요금제
 
 type ClaudeUsage = {
   sessions: number;                    // projects/<dir>/<uuid>.jsonl (깊이 1) 개수
@@ -134,6 +142,7 @@ type ClaudeUsage = {
   toolCalls: number;                   // 중복 제거한 tool_use 전체
   builtinTools: Record<string, number>;// mcp__ 가 아닌 도구 이름별
   models?: Record<string, number>;     // 모델 id 별 assistant API 메시지 수(message.id 고유). 아래 「모델별 사용 수」
+  outputTokens?: number;               // 출력 토큰 합. message.id 마다 가장 큰 output_tokens. 아래 「출력 토큰」
   firstActivity: string | null; lastActivity: string | null;   // YYYY-MM-DD
   activeDays: number;                  // timestamp 날짜(로컬 아님, UTC) 고유 개수
 };
@@ -146,6 +155,7 @@ type CodexUsage = {
   subagentActivities: number;          // 서브에이전트를 띄운 횟수 (SubAgentActivity 중 kind 'started' 만)
   commandExecutions: number;
   models?: Record<string, number>;     // 모델 id 별 턴 수. 대화형 세션만, 대화형 턴이 없을 때만 모든 턴. 아래 「모델별 사용 수」
+  outputTokens?: number;               // 출력 토큰 합(추론 포함). rollout 파일마다 가장 큰 누계를 모든 파일에 걸쳐 더함. 아래 「Codex」
   firstActivity: string | null; lastActivity: string | null; activeDays: number;
 };
 
@@ -156,6 +166,7 @@ type PiUsage = {
   mcpCalls: number;                    // mcp__<server>__<tool> 호출 (직접 + codemode 안)
   subagentRuns: number;                // subagent 도구가 띄운 에이전트 수 (확장 도구. Pi 에는 내장 서브에이전트가 없다)
   models?: Record<string, number>;     // 모델 id 별 assistant 메시지 수. 아래 「Pi 사용 기록」
+  outputTokens?: number;               // assistant 메시지 message.usage.output 합(포크 사본은 한 번만). 아래 「Pi 사용 기록」
   firstActivity: string | null; lastActivity: string | null; activeDays: number;
 };
 
@@ -200,6 +211,12 @@ type Activity = {                      // 모든 도구를 합친 활동일. 날
   `"id":"` 는 `"content":` 보다 앞에 있을 때만 쓴다. 이 모양이 아닌 assistant 줄은 `tool_use` 등으로 어차피 parse 할 때만 센다(이 PC 에서 23줄).
   도구 입력 안의 `"model"` 키는 쓰지 않는다. 전체 스캔 시간 증가는 약 0.3초(5.4초 → 5.8초)였다.
 - 모델 id 는 `/^[a-z0-9][a-z0-9.\-_]{0,63}$/i` 에 맞을 때만 그대로 쓰고, 아니면(경로·사내 배포 이름 등) `other` 로 센다. Codex 도 같다.
+- 출력 토큰(`usage.outputTokens`): assistant 메시지의 `message.usage.output_tokens` 를 `message.id` 마다 **가장 큰 값**으로 잡아 더한다
+  (한 메시지가 여러 줄로 나뉘고, 스트리밍 중에는 같은 usage 가 커지는 값으로 되풀이된다). `<synthetic>` 은 뺀다. id 가 없는 메시지는 줄마다 더한다.
+  위 모델 빠른 경로로 읽은 줄은 JSON.parse 없이, 줄의 **마지막** `"usage":{` 를 찾아 그 뒤 첫 `"output_tokens":` 숫자를 쓴다.
+  `"usage":{` 가 `"content":` 보다 뒤에 있어야 한다(usage 는 content 다음에 쓰인다). 내용 블록 안의 글은 JSON 문자열이라 따옴표가 `\"` 로
+  바뀌어 이 표시와 맞지 않는다. 내용에 객체가 들어가는 줄(`tool_use` 입력)은 어차피 parse 하므로 parse 결과의 `message.usage` 를 쓴다.
+  그래서 도구 입력·본문에 든 `"output_tokens"` 는 세지 않는다. 이 PC 사본에서 Python 전체 parse 기준값과 정확히 같았다(약 4,267만, 고유 id 약 4.9만).
 - 진행률: 파일 100개마다 stderr 에 `대화 기록 읽는 중 300/1050` 를 덮어쓰기로 출력(`--json` 일 때도 stderr).
 
 ### 스킬 사용 횟수
@@ -237,6 +254,11 @@ hostname 은 소문자로 바꾸고 끝의 `.` 을 뗀 뒤 비교한다. 목록�
   `exec`·서브에이전트까지 모든 턴으로, 그것도 없으면 `config.toml` 의 `model`·`model_reasoning_effort`. 포크된 서브에이전트 파일에 복사된
   부모 턴은 대화형 집계와 따로 중복 제거하므로 대화형 쪽에서 빠지지 않는다. 고른 쪽에 effort 가 없으면 effort 만 config 값을 쓴다.
   같은 턴 집합(대화형, 없으면 전체)의 모델별 턴 수를 `usage.models` 로 내보낸다(id 검사는 Claude Code 와 같다).
+- 출력 토큰·구독: `"token_count"` 가 든 줄(`type: 'event_msg'`, `payload.type: 'token_count'`, 한 줄 600바이트 안팎)만 parse 한다.
+  `payload.info.total_token_usage.output_tokens` 는 그 rollout 의 누계라, **파일마다 가장 큰 값**을 잡아 대화형·exec·서브에이전트 파일 모두
+  더해 `usage.outputTokens` 로 낸다(`info` 는 null 일 수 있다. 서브에이전트 rollout 은 자기 누계를 0 부터 다시 센다). `reasoning_output_tokens` 는
+  `output_tokens` 에 이미 들어 있어 따로 더하지 않는다. `payload.rate_limits.plan_type` 은 아래 「구독 등급」.
+  Claude Code 출력 토큰과 합쳐 전체 스캔 시간 증가는 약 0.2초(5.95초 → 6.1초 안팎)였다.
 
 ### Codex 훅
 
@@ -369,7 +391,21 @@ hostname 은 소문자로 바꾸고 끝의 `.` 을 뗀 뒤 비교한다. 목록�
 - **포크 중복 제거**: `/fork`·`/clone` 은 부모 엔트리를 `id`·`timestamp` 그대로 새 파일에 복사한다. 엔트리 id 는 8자리 hex 라 다른 세션과
   겹칠 수 있어 `id@timestamp` 를 엔트리 키로 쓴다. assistant 메시지는 엔트리 키로, 도구 호출은 `<엔트리 timestamp>|<toolCall id>` 로,
   nested 호출은 `<toolResult timestamp>|<nested id>` 로 한 번만 센다. 세션 수는 파일 수 그대로다.
+- 출력 토큰(`usage.outputTokens`): assistant 메시지의 `message.usage.output`(숫자)을 모델과 같은 엔트리 키 중복 제거로 한 번만 더한다.
 - 진행률은 `Pi 세션 읽는 중 300/1050`.
+
+### 구독 등급 (`claudeCode.plan`, `codex.plan`)
+
+등급 이름만 내보낸다. 아래 목록에 없는 값은 원문 그대로 쓰지 않고 `null` 이다. `--no-plan` 이면 둘 다 `null` 이다.
+
+- **Claude** (`ClaudePlan`): `~/.claude.json` 의 `oauthAccount.organizationType` 을 소문자로 바꾸고 앞의 `claude_` 를 떼어
+  (`claude_max` → `max`) 목록과 맞춘다. 없거나 목록에 없으면 `planDisplayName` 을 소문자·앞뒤 공백 제거한 값이 목록과 **정확히** 같을 때만 쓴다
+  (`Ultra` 같은 표시 이름은 버린다. `organizationType: claude_max`, `planDisplayName: Ultra` 이면 `max`). `oauthAccount` 가 없으면 `null`.
+  **`oauthAccount` 의 다른 필드(`emailAddress`, `fullName`, `displayName`, `organizationName`, uuid 들)는 읽지 않는다.**
+  `.credentials.json` 은 열지 않는다. 사용 기록 집계와 상관없어 `--no-usage` 여도 나온다.
+- **Codex** (`CodexPlan`, ChatGPT 요금제): `auth.json` 은 열지 않고, 세션 기록의 `token_count` 줄 중 `rate_limits.plan_type` 이 문자열인 것
+  가운데 최상위 `timestamp` 가 **가장 늦은** 줄의 값을 쓴다(세션 종류·파일 상관없음, `null` 인 줄은 건너뜀). 소문자로 바꾸고 `prolite` 는
+  `pro` 로 친 뒤 목록과 맞춘다. 가장 늦은 값이 목록에 없으면 더 이른 값으로 돌아가지 않고 `null` 이다. 세션 기록을 안 읽으면(`--no-usage`) `null`.
 
 ### 활동일 합계 (`activity`)
 

@@ -25,7 +25,7 @@ export const STAT_AXES: readonly AxisDef[] = [
   { key: 'guidance', name: '지침력', half: 300, title: '규칙 설계자' },
   { key: 'command', name: '에이전트 지휘', half: 300, title: '파티 지휘관' },
   { key: 'tooling', name: '도구 활용', half: 500, title: '장비 수집가' },
-  { key: 'execution', name: '실행력', half: 10_000, title: '터미널 전사' },
+  { key: 'execution', name: '실행력', half: 10_000, title: '터미널 해결사' },
   { key: 'consistency', name: '꾸준함', half: 30, title: '성실한 모험가' },
 ];
 

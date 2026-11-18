@@ -73,6 +73,24 @@ test('share --out and the default name; a bad name exits 2 and writes nothing', 
   }
 });
 
+test('share --no-plan keeps both plans out of the HTML', async () => {
+  const { home, cleanup } = await makeHome();
+  try {
+    const on = run(['share', '--home', home, '--out', 'on.html'], home);
+    assert.equal(on.status, 0, on.stderr);
+    const shared = shareData(await readFile(join(home, 'on.html'), 'utf8')).profile;
+    assert.deepEqual([shared.claudeCode?.plan, shared.codex?.plan], ['max', 'plus']);
+    assert.match(on.stderr, /^구독: Claude Max · ChatGPT Plus \(--no-plan 으로 뺌\)$/m);
+    const off = run(['share', '--no-plan', '--home', home, '--out', 'off.html'], home);
+    assert.equal(off.status, 0, off.stderr);
+    const hidden = shareData(await readFile(join(home, 'off.html'), 'utf8')).profile;
+    assert.deepEqual([hidden.claudeCode?.plan, hidden.codex?.plan], [null, null]);
+    assert.match(off.stderr, /^구독: 뺌 \(--no-plan\)$/m);
+  } finally {
+    await cleanup();
+  }
+});
+
 test('--handle still works as a quiet alias of --name and is not in the help', async () => {
   const { home, cleanup } = await makeHome();
   try {

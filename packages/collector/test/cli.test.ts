@@ -31,6 +31,25 @@ test('--json prints the profile to stdout, summary to stderr, writes no file', a
   }
 });
 
+test('--no-plan leaves both plans out and says so; without it the summary names them', async () => {
+  const { home, cleanup } = await makeHome();
+  try {
+    const on = run(['scan', '--json', '--home', home], home);
+    assert.equal(on.status, 0, on.stderr);
+    const withPlan = JSON.parse(on.stdout) as { claudeCode: { plan: string | null }; codex: { plan: string | null } };
+    assert.deepEqual([withPlan.claudeCode.plan, withPlan.codex.plan], ['max', 'plus']);
+    assert.match(on.stderr, /^구독: Claude Max · ChatGPT Plus \(--no-plan 으로 뺌\)$/m);
+    const off = run(['--json', '--no-plan', '--home', home], home);
+    assert.equal(off.status, 0, off.stderr);
+    const noPlan = JSON.parse(off.stdout) as { claudeCode: { plan: string | null }; codex: { plan: string | null } };
+    assert.deepEqual([noPlan.claudeCode.plan, noPlan.codex.plan], [null, null]);
+    assert.match(off.stderr, /^구독: 뺌 \(--no-plan\)$/m);
+    assert.match(run(['--help'], home).stdout, /--no-plan +구독 등급\(Claude·ChatGPT\)을 담지 않음/);
+  } finally {
+    await cleanup();
+  }
+});
+
 test('--out writes the file; unknown command exits 2', async () => {
   const { home, cleanup } = await makeHome();
   try {

@@ -20,6 +20,11 @@ export const LEAK_MARKERS: readonly string[] = [
   'harness-craft-test-',
   'deadbeefdeadbeef',
   '__FAKE_',
+  // ~/.claude.json oauthAccount fields other than organizationType / planDisplayName.
+  'Oauthfull',
+  'Personname',
+  'Oauthdisplay',
+  'Oauthorg',
   FAKE_GHP,
   FAKE_SK,
 ];

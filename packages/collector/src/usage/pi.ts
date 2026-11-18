@@ -45,6 +45,7 @@ type Accumulator = {
   skillRefs: Map<string, SkillRef>;
   skillNameRefs: Map<string, SkillRef>;
   models: Map<string, number>;
+  outputTokens: number;
   toolCalls: number;
   mcpTotal: number;
   subagentRuns: number;
@@ -129,12 +130,18 @@ function readUser(acc: Accumulator, file: FileState, message: Record<string, unk
   addRef(acc.skillNameRefs, name, file.turn, at);
 }
 
+function outputTokensOf(usage: unknown): number {
+  const output = isRecord(usage) ? usage.output : undefined;
+  return typeof output === 'number' && Number.isFinite(output) && output >= 0 ? output : 0;
+}
+
 function readAssistant(acc: Accumulator, file: FileState, message: Record<string, unknown>, key: string | null, at: string | null, home: string): void {
   // One count per assistant message; a forked file repeats its parent's messages under the same key.
   if (typeof message.model === 'string' && message.model.trim().length > 0 && !(key !== null && acc.messageKeys.has(key))) {
     if (key !== null) acc.messageKeys.add(key);
     // Router ids such as `anthropic/claude-sonnet-4.5` keep only the model part, so the class mapping still applies.
     incr(acc.models, modelKey(message.model.slice(message.model.lastIndexOf('/') + 1)));
+    acc.outputTokens += outputTokensOf(message.usage);
   }
   if (!Array.isArray(message.content)) return;
   for (const block of message.content) {
@@ -207,7 +214,7 @@ export async function scanPiSessions(
   const files = await listSessionFiles(roots);
   const acc: Accumulator = {
     callKeys: new Set(), messageKeys: new Set(), days: new Set(), builtin: new Map(), mcpToolCalls: new Map(),
-    skillRefs: new Map(), skillNameRefs: new Map(), models: new Map(), toolCalls: 0, mcpTotal: 0, subagentRuns: 0, badLines: 0,
+    skillRefs: new Map(), skillNameRefs: new Map(), models: new Map(), outputTokens: 0, toolCalls: 0, mcpTotal: 0, subagentRuns: 0, badLines: 0,
   };
   let done = 0;
   await runPool(files, FILE_CONCURRENCY, async (path) => {
@@ -229,6 +236,7 @@ export async function scanPiSessions(
       mcpCalls: acc.mcpTotal,
       subagentRuns: acc.subagentRuns,
       models: sortedRecord(acc.models),
+      outputTokens: acc.outputTokens,
       ...dateRange(acc.days),
     },
     mcpToolCalls: acc.mcpToolCalls,

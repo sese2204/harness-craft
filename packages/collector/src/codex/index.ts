@@ -56,8 +56,11 @@ export type CodexResult = {
   days: ReadonlySet<string> | null;
 };
 
-/** source is null when the Codex home ($CODEX_HOME or ~/.codex) does not exist. */
-export async function collectCodex(ctx: ScanContext, options: { usage: boolean }): Promise<CodexResult> {
+/**
+ * source is null when the Codex home ($CODEX_HOME or ~/.codex) does not exist. The plan comes from the session scan
+ * only (auth.json is never opened), so it is null without usage or with `plan: false`.
+ */
+export async function collectCodex(ctx: ScanContext, options: { usage: boolean; plan: boolean }): Promise<CodexResult> {
   const { codexHome } = ctx;
   if (!(await pathExists(codexHome))) return { source: null, days: null };
 
@@ -80,6 +83,7 @@ export async function collectCodex(ctx: ScanContext, options: { usage: boolean }
     rulesFiles: await countFiles(join(codexHome, 'rules'), ctx.diag),
     agents: await collectCodexAgents(config, scan?.roleCalls ?? null, ctx),
     plugins: toCodexPlugins(plugins, pluginUses, ctx),
+    plan: options.plan ? (scan?.plan ?? null) : null,
     usage: scan?.usage ?? null,
   };
   return { source, days: scan?.days ?? null };

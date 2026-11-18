@@ -18,6 +18,11 @@ const MESSAGE_MARK = Buffer.from('"message":{');
 const MODEL_MARK = Buffer.from('"model":"');
 const ID_MARK = Buffer.from('"id":"');
 const CONTENT_MARK = Buffer.from('"content":');
+/** message.usage is written after content; output_tokens is its first key of that name (before output_tokens_details). */
+const USAGE_MARK = Buffer.from('"usage":{');
+const OUTPUT_TOKENS_MARK = Buffer.from('"output_tokens":');
+const DIGIT_0 = 0x30;
+const DIGIT_9 = 0x39;
 const QUOTE = 0x22;
 /** Placeholder model on locally generated messages (errors, interruptions); not a model the user ran. */
 const SYNTHETIC_MODEL = '<synthetic>';
@@ -44,6 +49,10 @@ type Accumulator = {
   agentCalls: Map<string, number>;
   messageIds: Set<string>;
   models: Map<string, number>;
+  /** message.id -> largest output_tokens seen; streaming repeats usage with growing values. */
+  outputById: Map<string, number>;
+  /** Output tokens of messages without an id (each line counts). */
+  outputNoId: number;
   badLines: number;
 };
 
@@ -93,6 +102,34 @@ function countModel(acc: Accumulator, model: string, id: string | null): void {
   incr(acc.models, modelKey(model));
 }
 
+function addOutput(acc: Accumulator, model: string, id: string | null, tokens: number | null): void {
+  if (tokens === null || model === SYNTHETIC_MODEL) return;
+  if (id === null) {
+    acc.outputNoId += tokens;
+    return;
+  }
+  if (tokens > (acc.outputById.get(id) ?? -1)) acc.outputById.set(id, tokens);
+}
+
+/** Digits right after `at`, or null. */
+function integerAt(line: Buffer, at: number): number | null {
+  let end = at;
+  while (end < line.length && (line[end] as number) >= DIGIT_0 && (line[end] as number) <= DIGIT_9) end += 1;
+  return end === at ? null : Number(line.toString('latin1', at, end));
+}
+
+/**
+ * message.usage.output_tokens without JSON.parse: the last `"usage":{` in the line, which must come after the message's
+ * `"content":`. Text inside content is a JSON string, where the quotes are escaped and the mark cannot match, so only an
+ * object in content could; lines whose content holds objects (tool_use input) are parsed instead and never come here.
+ */
+function fastOutputTokens(line: Buffer, content: number): number | null {
+  const usage = line.lastIndexOf(USAGE_MARK);
+  if (usage === -1 || usage < content) return null;
+  const out = line.indexOf(OUTPUT_TOKENS_MARK, usage + USAGE_MARK.length);
+  return out === -1 ? null : integerAt(line, out + OUTPUT_TOKENS_MARK.length);
+}
+
 function quotedAfter(line: Buffer, at: number, mark: Buffer): string | null {
   const start = at + mark.length;
   const end = line.indexOf(QUOTE, start);
@@ -105,7 +142,7 @@ function quotedAfter(line: Buffer, at: number, mark: Buffer): string | null {
  * messages open with "role"), and the id must come before `"content":`, so a `"model"` key inside tool input is never
  * used. Other lines get a model only when they are parsed anyway (tool_use / slash-command lines).
  */
-function fastModel(line: Buffer): { model: string; id: string | null } | null {
+function fastModel(line: Buffer): { model: string; id: string | null; content: number } | null {
   const msg = line.subarray(0, MESSAGE_HEAD_BYTES).indexOf(MESSAGE_MARK);
   if (msg === -1) return null;
   const model = msg + MESSAGE_MARK.length;
@@ -114,13 +151,22 @@ function fastModel(line: Buffer): { model: string; id: string | null } | null {
   const id = line.indexOf(ID_MARK, msg);
   if (content === -1 || (id !== -1 && id > content)) return null;
   const name = quotedAfter(line, model, MODEL_MARK);
-  return name === null ? null : { model: name, id: id === -1 ? null : quotedAfter(line, id, ID_MARK) };
+  return name === null ? null : { model: name, id: id === -1 ? null : quotedAfter(line, id, ID_MARK), content };
 }
 
-function countParsedModel(acc: Accumulator, record: unknown): void {
+function parsedOutputTokens(message: Record<string, unknown>): number | null {
+  const tokens = isRecord(message.usage) ? message.usage.output_tokens : undefined;
+  return typeof tokens === 'number' && Number.isFinite(tokens) && tokens >= 0 ? tokens : null;
+}
+
+/** Model (when the fast path missed it) and output tokens from a parsed assistant line. */
+function countParsedMessage(acc: Accumulator, record: unknown, fastHit: boolean): void {
   if (!isRecord(record) || record.type !== 'assistant' || !isRecord(record.message)) return;
   const { model, id } = record.message;
-  if (typeof model === 'string') countModel(acc, model, typeof id === 'string' ? id : null);
+  if (typeof model !== 'string') return;
+  const messageId = typeof id === 'string' ? id : null;
+  if (!fastHit) countModel(acc, model, messageId);
+  addOutput(acc, model, messageId, parsedOutputTokens(record.message));
 }
 
 function scanLine(acc: Accumulator, line: Buffer): void {
@@ -132,10 +178,13 @@ function scanLine(acc: Accumulator, line: Buffer): void {
   }
   const fast = fastModel(line);
   if (fast) countModel(acc, fast.model, fast.id);
-  if (line.indexOf(TOOL_USE_MARK) === -1 && line.indexOf(COMMAND_MARK) === -1) return;
+  if (line.indexOf(TOOL_USE_MARK) === -1 && line.indexOf(COMMAND_MARK) === -1) {
+    if (fast) addOutput(acc, fast.model, fast.id, fastOutputTokens(line, fast.content));
+    return;
+  }
   try {
     const record: unknown = JSON.parse(line.toString('utf8'));
-    if (fast === null) countParsedModel(acc, record);
+    countParsedMessage(acc, record, fast !== null);
     countRecord(acc, record);
   } catch {
     acc.badLines += 1;
@@ -166,7 +215,8 @@ export async function scanClaudeTranscripts(
   const files = await listFilesRecursive(projectsDir, '.jsonl');
   const acc: Accumulator = {
     toolIds: new Set(), days: new Set(), builtin: new Map(), mcpCalls: new Map(),
-    skillCalls: new Map(), slashCalls: new Map(), agentCalls: new Map(), messageIds: new Set(), models: new Map(), badLines: 0,
+    skillCalls: new Map(), slashCalls: new Map(), agentCalls: new Map(), messageIds: new Set(), models: new Map(),
+    outputById: new Map(), outputNoId: 0, badLines: 0,
   };
   let done = 0;
   await runPool(files, FILE_CONCURRENCY, async (rel) => {
@@ -189,6 +239,7 @@ export async function scanClaudeTranscripts(
       toolCalls: acc.toolIds.size,
       builtinTools: sortedRecord(acc.builtin),
       models: sortedRecord(acc.models),
+      outputTokens: [...acc.outputById.values()].reduce((a, b) => a + b, acc.outputNoId),
       ...dateRange(acc.days),
     },
     mcpCalls: acc.mcpCalls,

@@ -5,6 +5,7 @@ import { buildEquipment, buildInventory, EQUIP_SLOTS } from './items.js';
 import { applyVisibility, mergeProfile } from './merge.js';
 import { buildParty, buildPassives } from './party.js';
 import { buildHero } from './hero.js';
+import { buildMana, buildStage } from './plan.js';
 import { buildStats, experience, levelFor, statInputs, titleFor } from './stats.js';
 import type { HiddenKind, Origin, SheetModel, Visibility } from './types.js';
 
@@ -15,6 +16,7 @@ export { hookKey } from './merge.js';
 export { EQUIP_SLOTS, ICON_NAMES, INVENTORY_SIZE, mcpIcon } from './items.js';
 export { PARTY_SIZE, PASSIVE_SIZE, roleBadge, partyClass, CLASS_BADGE } from './party.js';
 export { buildHero, heroRank } from './hero.js';
+export { MANA_HALF, buildMana, buildStage } from './plan.js';
 export { STAT_AXES, score, levelFor } from './stats.js';
 export { listEntries, type VisibilityEntry, type VisibilityEntries } from './entries.js';
 export { parseProfile, type ParseResult } from './validate.js';
@@ -62,6 +64,8 @@ export function toSheet(profile: HarnessProfile, visibility: Visibility): SheetM
     sources: sourcesOf(profile),
     level,
     hero: buildHero(profile, level.level),
+    stage: buildStage(profile),
+    mana: buildMana(profile),
     title: titleFor(stats),
     equipSummary: `MCP 장비 ${equipped}/${EQUIP_SLOTS.length} 장착 · 스킬 ${merged.skills.length}개 보유`,
     equipment,

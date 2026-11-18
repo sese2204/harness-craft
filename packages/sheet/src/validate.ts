@@ -80,6 +80,11 @@ function checkSource(value: unknown, path: string, kind: Kind, errors: string[])
       }
     }
   }
+  // usage.outputTokens and plan are optional (added after schema v1 shipped). An unknown plan string is ignored by the sheet.
+  if (isRecord(value.usage) && value.usage.outputTokens !== undefined && !isCount(value.usage.outputTokens)) {
+    errors.push(`${path}.usage.outputTokens 값이 올바르지 않습니다`);
+  }
+  if (value.plan !== undefined && !isStringOrNull(value.plan)) errors.push(`${path}.plan 값이 올바르지 않습니다`);
   if (kind !== 'codex' && isRecord(value.usage) && isRecord(value.usage.builtinTools)) {
     for (const [tool, n] of Object.entries(value.usage.builtinTools)) {
       if (!isCount(n)) errors.push(`${path}.usage.builtinTools.${tool} 값이 올바르지 않습니다`);

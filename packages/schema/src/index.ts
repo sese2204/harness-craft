@@ -51,6 +51,18 @@ export type Command = { name: string; description: string };
 
 export type Instructions = { present: boolean; lines: number; bytes: number };
 
+/**
+ * Claude subscription, from `~/.claude.json` oauthAccount.organizationType (fallback planDisplayName), matched against
+ * this list. Nothing else from oauthAccount is read, and an unrecognized value becomes null (never the raw string).
+ */
+export type ClaudePlan = 'free' | 'pro' | 'max' | 'team' | 'enterprise';
+
+/**
+ * ChatGPT plan Codex runs under, from the latest `rate_limits.plan_type` in the session logs (auth.json is never
+ * read), matched against this list. `prolite` is folded into `pro`; anything else becomes null.
+ */
+export type CodexPlan = 'free' | 'go' | 'plus' | 'pro' | 'team' | 'business' | 'enterprise' | 'edu';
+
 export type ClaudeUsage = {
   sessions: number;
   subagentRuns: number;
@@ -59,6 +71,8 @@ export type ClaudeUsage = {
   builtinTools: Record<string, number>;
   /** Assistant API messages per model id (unique message.id). Ids that are not plain model names are under 'other'. Optional for older files. */
   models?: Record<string, number>;
+  /** Output tokens over unique assistant messages (largest value seen per message.id). Optional for older files. */
+  outputTokens?: number;
   firstActivity: string | null;
   lastActivity: string | null;
   activeDays: number;
@@ -76,6 +90,8 @@ export type CodexUsage = {
   commandExecutions: number;
   /** Turns per model id from interactive sessions; all turns only when there are no interactive ones. Optional for older files. */
   models?: Record<string, number>;
+  /** Output tokens (reasoning included): per rollout file the largest total_token_usage.output_tokens, summed over every file. Optional for older files. */
+  outputTokens?: number;
   firstActivity: string | null;
   lastActivity: string | null;
   activeDays: number;
@@ -94,6 +110,8 @@ export type PiUsage = {
   subagentRuns: number;
   /** Assistant messages per model id. Ids that are not plain model names are under 'other'. */
   models?: Record<string, number>;
+  /** message.usage.output over unique assistant messages. Optional for older files. */
+  outputTokens?: number;
   firstActivity: string | null;
   lastActivity: string | null;
   activeDays: number;
@@ -110,6 +128,8 @@ export type ClaudeCodeSource = {
   plugins: Plugin[];
   commands: Command[];
   instructions: Instructions;
+  /** Optional for older files. null when not signed in with a subscription, unrecognized, or `--no-plan`. */
+  plan?: ClaudePlan | null;
   usage: ClaudeUsage | null;
 };
 
@@ -126,6 +146,8 @@ export type CodexSource = {
   agents?: Agent[];
   /** Optional so older profiles still parse. The collector always emits it. */
   plugins?: Plugin[];
+  /** Optional for older files. null when no session log carries a plan, it is unrecognized, `--no-usage` or `--no-plan`. */
+  plan?: CodexPlan | null;
   usage: CodexUsage | null;
 };
 

@@ -3,6 +3,19 @@ import type { ClaudeCodeSource, CodexSource, HarnessProfile, PiSource } from './
 export const NO_UPLOAD_LINE = '아무것도 업로드하지 않았습니다.';
 const MAX_WARNINGS_SHOWN = 10;
 
+function planName(plan: string): string {
+  return plan.charAt(0).toUpperCase() + plan.slice(1);
+}
+
+/** One line on the subscription plans: what went into the file, or that `--no-plan` left them out. */
+export function planLine(profile: HarnessProfile, included: boolean): string {
+  if (!included) return '구독: 뺌 (--no-plan)';
+  const claude = profile.claudeCode?.plan;
+  const codex = profile.codex?.plan;
+  const found = [...(claude ? [`Claude ${planName(claude)}`] : []), ...(codex ? [`ChatGPT ${planName(codex)}`] : [])];
+  return `구독: ${found.length > 0 ? found.join(' · ') : '확인 못 함'} (--no-plan 으로 뺌)`;
+}
+
 function range(first: string | null, last: string | null): string {
   return first && last ? ` (${first} ~ ${last})` : '';
 }
@@ -53,7 +66,7 @@ function piLines(p: PiSource): string[] {
 }
 
 /** Human-readable summary for stderr. The last line always states that nothing was uploaded. */
-export function formatSummary(profile: HarnessProfile, savedTo: string | null): string {
+export function formatSummary(profile: HarnessProfile, savedTo: string | null, plan = true): string {
   const r = profile.redactions;
   const lines = [
     `harness-craft ${profile.collector.version} 스캔 결과`,
@@ -61,6 +74,7 @@ export function formatSummary(profile: HarnessProfile, savedTo: string | null): 
     ...(profile.codex ? codexLines(profile.codex) : ['Codex — 찾지 못함']),
     ...(profile.pi ? piLines(profile.pi) : ['Pi — 찾지 못함']),
     ...(profile.activity ? [`활동일 합계 ${profile.activity.activeDays}일 (도구 중 하나라도 쓴 날)${range(profile.activity.firstActivity, profile.activity.lastActivity)}`] : []),
+    planLine(profile, plan),
     `가림 처리: 경로 ${r.paths} · 이메일 ${r.emails} · 비밀값 ${r.secrets} · URL ${r.urls}`,
   ];
   if (profile.warnings.length > 0) {

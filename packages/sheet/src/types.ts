@@ -107,6 +107,28 @@ export interface LevelInfo {
   progress: number;
 }
 
+/** Backdrop of the character stage: free → field, Pro/Plus → castle gate, Team/Enterprise → guild hall, Max/ChatGPT Pro → throne room. */
+export type StageKind = 'field' | 'gate' | 'guild' | 'throne';
+
+export interface PlanBadge {
+  tool: 'claude' | 'codex';
+  /** e.g. `Claude Max`, `ChatGPT Pro`. Built from the enum, never from profile text. */
+  label: string;
+}
+
+export interface StageInfo {
+  /** The highest stage among the tools' plans. */
+  kind: StageKind;
+  plans: PlanBadge[];
+}
+
+export interface ManaInfo {
+  /** Output tokens across all tools. */
+  tokens: number;
+  /** tokens / (tokens + MANA_HALF), 0..1 */
+  fill: number;
+}
+
 export interface SheetModel {
   handle: string;
   /** `YYYY.MM.DD` of generatedAt (UTC), or '' when generatedAt is not an ISO date. */
@@ -114,6 +136,10 @@ export interface SheetModel {
   sources: Origin[];
   level: LevelInfo;
   hero: HeroInfo;
+  /** null when no subscription plan is known. */
+  stage: StageInfo | null;
+  /** null when no output token counts are present. */
+  mana: ManaInfo | null;
   title: string;
   equipSummary: string;
   equipment: EquipSlot[];

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 
 import { FAKE_GHP, FAKE_SK } from './fakeTokens.js';
-import { LEAK_MARKERS as MARKERS, makeHome, scanFixture } from './helpers.js';
+import { FIXTURE_HOME, LEAK_MARKERS as MARKERS, makeHome, scanFixture } from './helpers.js';
 
 test('no planted marker survives in the profile JSON', async () => {
   // With ~/.pi too: auth.json, models.json, mcp.json env/headers and session text all carry LEAK- markers.
@@ -17,6 +17,21 @@ test('no planted marker survives in the profile JSON', async () => {
   // Something was actually redacted, so the test is not passing vacuously.
   assert.ok(profile.redactions.secrets > 0 && profile.redactions.urls > 0);
   assert.ok(profile.redactions.emails > 0 && profile.redactions.paths > 0);
+});
+
+test('only the normalized plan comes out of oauthAccount', async () => {
+  const { profile, home } = await scanFixture();
+  const account = JSON.parse(await readFile(join(FIXTURE_HOME, '.claude.json'), 'utf8')).oauthAccount as Record<string, string>;
+  const json = JSON.stringify(profile);
+  for (const key of ['emailAddress', 'accountUuid', 'organizationUuid', 'fullName', 'displayName', 'organizationName', 'organizationType', 'planDisplayName']) {
+    const value = account[key];
+    assert.ok(typeof value === 'string' && value.length > 0, `fixture has ${key}`);
+    assert.equal(json.includes(value), false, `oauthAccount.${key} leaked`);
+  }
+  assert.equal(json.includes('oauthAccount'), false);
+  assert.equal(json.includes(home), false);
+  // Not vacuous: the plan itself was read.
+  assert.equal(profile.claudeCode?.plan, 'max');
 });
 
 test('no marker leaks without usage either', async () => {

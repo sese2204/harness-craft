@@ -44,7 +44,7 @@ test('Codex sessions: McpToolCall deduped by item.id, per-server calls, dates fr
   // subagentActivities counts only `started` (s1, deduped across files).
   assert.deepEqual(x.usage, {
     sessions: 3, execSessions: 1, mcpCalls: 2, subagentActivities: 1, commandExecutions: 8,
-    models: { 'gpt-5.5-luna': 1, 'gpt-5.5-sol': 3 }, interactiveDays: 2,
+    models: { 'gpt-5.5-luna': 1, 'gpt-5.5-sol': 3 }, outputTokens: 120, interactiveDays: 2,
     firstActivity: '2026-10-08', lastActivity: '2026-10-09', activeDays: 2,
   });
   assert.equal(byName(x.mcpServers, 'acme-mcp').calls, 1);

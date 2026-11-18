@@ -5,7 +5,14 @@
   "userID": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
   "oauthAccount": {
     "emailAddress": "fake.user@example.com",
-    "accountUuid": "LEAK-ACCOUNT-777"
+    "accountUuid": "LEAK-ACCOUNT-777",
+    "organizationUuid": "LEAK-ORG-UUID-888",
+    "fullName": "Oauthfull Personname",
+    "displayName": "Oauthdisplay",
+    "organizationName": "Oauthorg Holdings",
+    "organizationRole": "admin",
+    "organizationType": "claude_max",
+    "planDisplayName": "Ultra"
   },
   "mcpServers": {
     "leaky-stdio": {

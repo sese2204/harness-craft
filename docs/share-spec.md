@@ -7,7 +7,7 @@
 ## 명령
 
 ```
-harness-craft share [--out <file>] [--name <이름>] [--hide <glob>]... [--descriptions] [--no-usage] [--home <dir>]
+harness-craft share [--out <file>] [--name <이름>] [--hide <glob>]... [--descriptions] [--no-usage] [--no-plan] [--home <dir>]
 ```
 
 | 옵션 | 동작 |
@@ -17,7 +17,7 @@ harness-craft share [--out <file>] [--name <이름>] [--hide <glob>]... [--descr
 | `--name <이름>` | 시트에 보일 이름(닉네임). 아무 글자나 된다(한글·이모지 포함). 앞뒤 공백과 앞쪽 `@` 를 떼고, 비면 기본 `player`. 제어 문자(U+0000–U+001F, U+007F)가 있거나 32자(코드 포인트 기준)를 넘으면 exit 2. 확인하거나 어디로 보내는 값이 아니라 화면에 쓰는 이름일 뿐이다. 예전 이름 `--handle` 도 같은 뜻으로 받지만 도움말에는 없다. 둘을 함께 주면 exit 2 |
 | `--hide <glob>` | 이름이 맞는 항목을 파일에서 뺀다. 대소문자 무시, `*` 만 와일드카드. 여러 번 줄 수 있다 |
 | `--descriptions` | 설명을 파일에 넣는다. 없으면 모든 설명을 비운다 |
-| `--no-usage`, `--home` | `scan` 과 같다 |
+| `--no-usage`, `--no-plan`, `--home` | `scan` 과 같다 |
 
 `scan` 전용 옵션(`--json`)과 `share` 전용 옵션을 섞으면 exit 2. 기존 `scan` 동작은 그대로다.
 

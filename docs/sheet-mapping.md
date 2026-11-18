@@ -79,7 +79,7 @@ SessionStart 출정 준비 · SessionEnd 귀환 기록 · UserPromptSubmit 명�
 | 지침력 | CLAUDE.md 줄 + Codex AGENTS.md 줄 + Pi AGENTS.md 줄 + 스킬 수 × 10 | 300 | 규칙 설계자 |
 | 에이전트 지휘 | 에이전트 uses 합(Claude Code + Codex) + subagentRuns + Codex subagentActivities(서브에이전트를 띄운 횟수) + Pi subagentRuns(subagent 도구가 띄운 에이전트 수) | 300 | 파티 지휘관 |
 | 도구 활용 | MCP calls 합(세 도구 합친 MCP 의 calls) | 500 | 장비 수집가 |
-| 실행력 | builtinTools 의 Bash + Read + Edit + Write + Grep + Glob + Codex commandExecutions + Pi builtinTools 의 bash + powershell + read + edit + write + grep + find | 10,000 | 터미널 전사 |
+| 실행력 | builtinTools 의 Bash + Read + Edit + Write + Grep + Glob + Codex commandExecutions + Pi builtinTools 의 bash + powershell + read + edit + write + grep + find | 10,000 | 터미널 해결사 |
 | 꾸준함 | `activity.activeDays`(모든 도구 활동일의 합집합, 같은 날은 하루). `activity` 가 없거나 null 이면 Claude·Codex·Pi activeDays 중 가장 큰 값 | 30 | 성실한 모험가 |
 
 Pi 의 `find` 는 Claude Code 의 Glob 과 같은 일이라 넣고, `ls`·`codemode`·`tool_search` 는 넣지 않는다(Claude Code 쪽도 LS 는 뺀다).
@@ -109,10 +109,35 @@ EXP 표시는 `EXP {exp − 25·L²} / {25·((L+1)² − L²)}`.
 | 레벨 | 구간 | 모습 |
 |---|---|---|
 | 1~9 | 견습 | 맨몸 튜닉(직업 표시 없음) |
-| 10~29 | 정식 | 직업 옷과 표식(마법사 모자·로브, 궁수 후드·화살통 끈, 도적 두건·복면, 현자 수염·로브·머리띠, 전사 머리띠). 머리 장식은 투구 칸이 비었을 때만 |
+| 10~29 | 정식 | 직업 옷과 표식(마법사 모자·로브, 궁수 후드·화살통 끈, 도적 두건·복면, 현자 수염·로브·머리띠, 전사 머리띠) |
 | 30~49 | 숙련 | 직업 색 망토 추가 |
 | 50~ | 각성 | 눈이 직업 색으로 빛나고 발밑에 직업 색 오라 |
 
-**장비.** 투구·갑옷·신발·장신구 칸의 MCP 는 등급별 모양(두건→철투구→뿔 투구→왕관 등)으로 입히고, 무기·보조는 그 MCP 아이콘을 손에 든다.
+**장비.** 갑옷·신발·장신구 칸의 MCP 는 등급별 모양으로 입히고, 무기·보조는 그 MCP 아이콘을 손에 든다.
+투구는 직업 머리 장식을 가리지 않는다.
+- 견습과 전사는 등급별 투구(두건→철투구→뿔 투구→왕관)를 쓴다. 투구 칸이 비면 전사는 머리띠.
+- 마법사·궁수·도적·현자는 직업 모자·후드·머리띠를 그대로 쓰고, 그 위에 투구 등급 색의 띠와 보석을 두른다(커먼 가죽, 레어 은·파랑 보석, 에픽 보라·금 보석, 레전더리 금·붉은 보석).
+  레전더리는 하나를 더 얹는다. 마법사 모자 끝 금별, 궁수 금깃털, 도적 복면 금장식, 현자 후광.
 슬롯 칸에는 그 부위를 확대한 그림과 MCP 아이콘 배지를 그린다. 에픽은 보라 테두리, 레전더리는 금빛 테두리·반짝이·오라,
-6칸 모두 에픽 이상이면 발밑에 마법진. 레전더리 갑옷의 금 망토는 직업 망토보다 우선한다.
+6칸 모두 에픽 이상이면 발밑에 마법진. 망토는 레전더리 갑옷의 금 망토 → 왕좌 무대의 붉은 망토 → 직업 망토 순으로 하나만 그린다.
+
+## 구독 무대
+
+캐릭터 무대 배경을 구독 등급으로 정한다(`packages/sheet/src/plan.ts`, 그림은 `packages/sheet-ui/src/stage.tsx`).
+수집기가 담은 `claudeCode.plan`·`codex.plan` 을 쓰고, 둘이 다르면 높은 무대를 보인다(들판 < 성문 < 길드 회관 < 왕좌의 방).
+
+| 무대 | Claude Code | Codex(ChatGPT) | 그림 |
+|---|---|---|---|
+| 들판 | free | free | 밤 들판, 언덕, 달 |
+| 성문 | pro | go, plus | 성벽과 탑, 횃불, 성문 |
+| 길드 회관 | team, enterprise | team, business, enterprise, edu | 나무 회관, 길드 깃발 두 개 |
+| 왕좌의 방 | max | pro | 기둥, 왕좌, 붉은 융단. 캐릭터에 흰 털 깃 붉은 망토 |
+
+무대 이름과 구독 이름은 캐릭터 이름 아래에 `왕좌의 방 · Claude Max · ChatGPT Pro` 처럼 적는다. 구독 이름은 위 표의 값으로만 만들고 파일 속 문자열을 그대로 쓰지 않는다.
+알 수 없는 값, 구독 정보가 없는 파일, `--no-plan` 이면 무대 배경 없이 그린다.
+
+## 마나
+
+`마나 = Claude usage.outputTokens + Codex usage.outputTokens + Pi usage.outputTokens` (모델이 쓴 출력 토큰).
+EXP 막대 아래 파란 MP 막대로 보이고, 채움은 `tokens / (tokens + 5,000,000)` 이다(스탯처럼 500만에서 절반, 끝까지 차지 않음).
+숫자는 `47.0M` 처럼 줄여 적는다. 세 도구 모두 값이 없으면(예전 파일, `--no-usage`) 막대를 그리지 않는다. 레벨·스탯에는 넣지 않는다.

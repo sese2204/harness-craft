@@ -19,6 +19,7 @@ export const COLOR = {
   goldLight: '#ffd36b',
   goldDark: '#a86f00',
   green: '#6fe36f',
+  blue: '#5aa0ff',
   purple: '#b05cff',
   pink: '#ff6b9d',
   sparkle: '#fff3c4',
@@ -45,4 +46,11 @@ export function formatNumber(value: number): string {
 
 export function formatUses(value: number): string {
   return `${formatNumber(value)}회`;
+}
+
+/** 12_345 → 12.3K, 47_043_000 → 47.0M, 1_200_000_000 → 1.2B. Below 1,000 the plain number. */
+export function formatCompact(value: number): string {
+  const units: ReadonlyArray<readonly [number, string]> = [[1e9, 'B'], [1e6, 'M'], [1e3, 'K']];
+  for (const [size, unit] of units) if (value >= size) return `${(value / size).toFixed(1)}${unit}`;
+  return formatNumber(value);
 }

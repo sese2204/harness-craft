@@ -79,6 +79,8 @@ test('Pi usage: forked copies counted once, codemode nestedCalls, direct MCP, su
     subagentRuns: 2,
     // The copied assistant message is one message; an id with spaces and slashes goes under `other`.
     models: { 'claude-opus-5-5': 3, 'claude-sonnet-5-5': 1, other: 1 },
+    // usage.output 1 on each of the five messages; the copy is not counted again.
+    outputTokens: 5,
     firstActivity: '2026-10-09',
     lastActivity: '2026-10-13',
     activeDays: 3,

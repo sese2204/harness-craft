@@ -11,8 +11,8 @@ import { formatSummary } from './summary.js';
 
 const DEFAULT_OUT = 'harness-profile.json';
 const DEFAULT_SHARE_OUT = 'harness-sheet.html';
-const USAGE = `사용법: harness-craft [scan] [--out <file>] [--json] [--no-usage] [--home <dir>]
-       harness-craft share [--out <file>] [--name <이름>] [--hide <glob>]... [--descriptions] [--no-usage] [--home <dir>]
+const USAGE = `사용법: harness-craft [scan] [--out <file>] [--json] [--no-usage] [--no-plan] [--home <dir>]
+       harness-craft share [--out <file>] [--name <이름>] [--hide <glob>]... [--descriptions] [--no-usage] [--no-plan] [--home <dir>]
 
 scan (기본) — 설정과 사용 기록을 읽어 harness-profile.json 을 만든다
   --out <file>      저장 위치 (기본 ./${DEFAULT_OUT})
@@ -26,6 +26,7 @@ share — 혼자 열리는 캐릭터 시트 HTML 한 장을 만든다
 
 공통
   --no-usage        대화 기록 집계를 건너뜀 (usage 는 null)
+  --no-plan         구독 등급(Claude·ChatGPT)을 담지 않음
   --home <dir>      홈 디렉터리 대신 쓸 경로 (테스트·디버그용). 주면 $CODEX_HOME 대신 <dir>/.codex,
                     $PI_CODING_AGENT_DIR 대신 <dir>/.pi/agent 를 읽고 $PI_CODING_AGENT_SESSION_DIR 는 무시함
 
@@ -33,7 +34,7 @@ Codex 설정은 $CODEX_HOME (없으면 ~/.codex) 에서 읽는다.
 Pi 설정은 $PI_CODING_AGENT_DIR (없으면 ~/.pi/agent) 에서, 세션은 $PI_CODING_AGENT_SESSION_DIR 가 있으면 거기서도 읽는다.
 `;
 
-type CommonOptions = { usage: boolean; home: string; codexHome: string; piAgentDir: string; piSessionDir?: string };
+type CommonOptions = { usage: boolean; plan: boolean; home: string; codexHome: string; piAgentDir: string; piSessionDir?: string };
 type ScanOptions = CommonOptions & { command: 'scan'; out: string; json: boolean };
 type ShareCliOptions = CommonOptions & { command: 'share'; out: string; handle: string; hide: string[]; descriptions: boolean };
 type CliOptions = ScanOptions | ShareCliOptions;
@@ -52,6 +53,7 @@ function parseCli(argv: readonly string[]): CliOptions | 'help' {
       out: { type: 'string' },
       json: { type: 'boolean' },
       'no-usage': { type: 'boolean', default: false },
+      'no-plan': { type: 'boolean', default: false },
       home: { type: 'string' },
       name: { type: 'string' },
       // Old spelling of --name, kept working but no longer documented.
@@ -72,6 +74,7 @@ function parseCli(argv: readonly string[]): CliOptions | 'help' {
   const piSessionDir = envDirFor(values.home, 'PI_CODING_AGENT_SESSION_DIR', home);
   const common: CommonOptions = {
     usage: values['no-usage'] !== true,
+    plan: values['no-plan'] !== true,
     home,
     codexHome: codexHomeFor(values.home, home),
     piAgentDir: envDirFor(values.home, 'PI_CODING_AGENT_DIR', home) ?? join(home, '.pi', 'agent'),
@@ -121,8 +124,8 @@ function progressReporter(label: string) {
 }
 
 function collectOptions(options: CommonOptions): CollectOptions {
-  const { home, codexHome, piAgentDir, piSessionDir, usage } = options;
-  return { home, codexHome, piAgentDir, usage, ...(piSessionDir !== undefined ? { piSessionDir } : {}) };
+  const { home, codexHome, piAgentDir, piSessionDir, usage, plan } = options;
+  return { home, codexHome, piAgentDir, usage, plan, ...(piSessionDir !== undefined ? { piSessionDir } : {}) };
 }
 
 async function runScan(options: ScanOptions): Promise<number> {
@@ -130,10 +133,10 @@ async function runScan(options: ScanOptions): Promise<number> {
   const json = JSON.stringify(profile, null, 2) + '\n';
   if (options.json) {
     process.stdout.write(json);
-    process.stderr.write(formatSummary(profile, null));
+    process.stderr.write(formatSummary(profile, null, options.plan));
   } else {
     await writeFile(options.out, json, 'utf8');
-    process.stderr.write(formatSummary(profile, options.out));
+    process.stderr.write(formatSummary(profile, options.out, options.plan));
   }
   return 0;
 }
@@ -141,7 +144,7 @@ async function runScan(options: ScanOptions): Promise<number> {
 async function runShare(options: ShareCliOptions): Promise<number> {
   const profile = await collectProfile({ ...collectOptions(options), onProgress: progressReporter });
   const result = await writeShareSheet(profile, options);
-  process.stderr.write(formatShareSummary(result, options.descriptions));
+  process.stderr.write(formatShareSummary(result, options.descriptions, options.plan));
   return 0;
 }
 

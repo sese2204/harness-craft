@@ -6,6 +6,7 @@ import { parseHooks } from '../hooks.js';
 import { pathExists, sortByName } from '../fsutil.js';
 import { readInstructions, readNestedDefinitions } from '../items.js';
 import { toCommand } from '../definitions.js';
+import { claudePlanOf } from '../plan.js';
 import type { ClaudeCodeSource } from '../types.js';
 import { scanClaudeTranscripts, type ClaudeTranscriptScan } from '../usage/claude.js';
 import { numberField, readClaudeConfig, stringValue } from './config.js';
@@ -30,8 +31,11 @@ export type ClaudeCodeResult = {
   days: ReadonlySet<string> | null;
 };
 
-/** source is null when neither ~/.claude nor ~/.claude.json exists. */
-export async function collectClaudeCode(ctx: ScanContext, options: { usage: boolean }): Promise<ClaudeCodeResult> {
+/**
+ * source is null when neither ~/.claude nor ~/.claude.json exists. With `plan: false` oauthAccount is not consulted.
+ * .credentials.json is never opened.
+ */
+export async function collectClaudeCode(ctx: ScanContext, options: { usage: boolean; plan: boolean }): Promise<ClaudeCodeResult> {
   const claudeDir = join(ctx.home, '.claude');
   const [hasDir, hasJson] = await Promise.all([pathExists(claudeDir), pathExists(join(ctx.home, '.claude.json'))]);
   if (!hasDir && !hasJson) return { source: null, days: null };
@@ -52,6 +56,7 @@ export async function collectClaudeCode(ctx: ScanContext, options: { usage: bool
     plugins: toPlugins(installed, settings, claudeJson, ctx),
     commands: sortByName((await readNestedDefinitions(join(claudeDir, 'commands'), ctx.diag)).map((d) => toCommand(d, ctx))),
     instructions: await readInstructions(join(claudeDir, 'CLAUDE.md'), ctx.diag),
+    plan: options.plan ? claudePlanOf(claudeJson.oauthAccount) : null,
     usage: scan?.usage ?? null,
   };
   return { source, days: scan?.days ?? null };

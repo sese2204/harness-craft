@@ -1,7 +1,7 @@
 // `harness-craft share`: scan → prepareShareProfile → fill the template → write one HTML file (docs/share-spec.md).
 import { writeFile } from 'node:fs/promises';
 
-import { NO_UPLOAD_LINE } from './summary.js';
+import { NO_UPLOAD_LINE, planLine } from './summary.js';
 import type { ShareData } from './shareFormat.js';
 import { fillShareTemplate, loadShareTemplate } from './shareHtml.js';
 import { prepareShareProfile, type ShareOptions } from './shareProfile.js';
@@ -34,7 +34,7 @@ function formatSize(bytes: number): string {
 }
 
 /** Human-readable summary for stderr. Counts add up all sources, as in the file. Pi has no agents or hooks. */
-export function formatShareSummary(result: ShareResult, descriptions: boolean): string {
+export function formatShareSummary(result: ShareResult, descriptions: boolean, plan = true): string {
   const c = result.profile.claudeCode;
   const x = result.profile.codex;
   const p = result.profile.pi;
@@ -47,6 +47,7 @@ export function formatShareSummary(result: ShareResult, descriptions: boolean): 
     `담긴 항목: MCP ${mcp} · 스킬 ${skills} · 에이전트 ${agents} · 훅 ${hooks}`,
     `숨긴 항목: ${result.hidden}개`,
     `설명: ${descriptions ? '포함' : '뺌 (--descriptions 로 포함)'}`,
+    planLine(result.profile, plan),
     SHARE_LAST_LINE,
   ];
   return lines.join('\n') + '\n';
